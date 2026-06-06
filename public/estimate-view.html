@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estimate — Deck Expert</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .row { display: flex; justify-content: space-between; padding: 0.35rem 0; font-size: 0.95rem; }
+  .row .label { color: var(--gray); }
+  .row .value { color: var(--dark); font-weight: 600; text-align: right; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; }
+  .meta-grid .field { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.5rem 0; }
+  .meta-grid .label { color: var(--gray); font-size: 0.85rem; }
+  .meta-grid .value { color: var(--dark); font-weight: 600; font-size: 0.95rem; word-break: break-word; }
+  .total-card .row .label, .total-card .row .value { color: #e8dfd7; }
+  .total-card .row.total .label, .total-card .row.total .value { color: #fff; font-weight: 700; }
+  .render-img { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); display: block; cursor: zoom-in; }
+  .render-caption { color: var(--gray); font-size: 0.85rem; margin-top: 0.5rem; text-align: center; }
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; }
+  .photo-tile { position: relative; aspect-ratio: 1/1; border-radius: var(--radius); overflow: hidden; border: 3px solid transparent; cursor: pointer; }
+  .photo-tile.design { border-color: var(--amber); }
+  .photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-tile .label { position: absolute; bottom: 0; left: 0; right: 0; background: var(--amber); color: #fff; padding: 0.3rem; font-size: 0.68rem; font-weight: 600; text-align: center; }
+  .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+  .actions .btn { flex: 1; min-width: 150px; }
+  .hcp-status { margin-top: 0.5rem; font-size: 0.9rem; }
+  .loading, .err { padding: 2rem; text-align: center; color: var(--gray); background: #fff; border-radius: var(--radius); border: 1px solid var(--line); }
+  .err { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; }
+  .lightbox .close { position: absolute; top: 1rem; right: 1rem; background: #fff; border: none; width: 40px; height: 40px; border-radius: 20px; font-size: 1.2rem; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="back">← Home</a>
+  <h1 id="pageTitle">Estimate</h1>
+  <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
+</div>
+<main id="content"><div class="loading">Loading…</div></main>
+<div id="lightbox" class="lightbox"><button type="button" class="close" id="lightboxClose">×</button><img id="lightboxImg" src="" alt=""></div>
+
+<script>
+const id = parseInt(location.pathname.split('/').pop(), 10);
+const content = document.getElementById('content');
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
+lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+
+fetch('/api/estimate/' + id).then(async r => { if (!r.ok) throw new Error((await r.json()).error || 'HTTP ' + r.status); return r.json(); })
+  .then(render).catch(err => { content.innerHTML = '<div class="err">Failed to load: ' + esc(err.message) + '</div>'; });
+
+function render(e) {
+  document.getElementById('pageTitle').innerHTML = 'Estimate #' + e.id + ' <span class="badge ' + e.status + '">' + e.status + '</span>';
+  const b = e.breakdown || {};
+  const renderPhoto = e.photos.find(p => p.kind === 'render');
+  const originals = e.photos.filter(p => p.kind === 'original');
+
+  const customer = card('Customer', '<div class="meta-grid">' +
+    f('Name', e.customer.name) + f('Phone', e.customer.phone || '—') +
+    f('Email', e.customer.email || '—') + f('Address', e.customer.address || '—') + '</div>');
+
+  const project = card(cap(e.structure_type) + ' project',
+    row('Service', e.labels.service || e.project.service_type) +
+    row('Finish', e.labels.opacity || e.project.opacity) +
+    row('Wood', e.labels.wood || e.project.wood_type) +
+    row('Prep', e.labels.prep || e.project.prep_level) +
+    row('Surface', (e.project.surface_sqft || 0) + ' sq ft' + (b.rate_per_sqft != null ? ' @ $' + b.rate_per_sqft.toFixed(2) + '/sq ft' : '')) +
+    row('Railing', (e.project.railing_lf || 0) + ' lf') +
+    row('Stairs', (e.project.stairs_count || 0) + ' steps'));
+
+  let extras = '';
+  if (b.extras_list && b.extras_list.length) {
+    extras = card('Extra services', b.extras_list.map(x => row(x.description, fmt(x.price))).join(''));
+  }
+
+  const totals = '<section class="card total-card"><h2 style="color:var(--cream)">Total</h2>' +
+    row('Surface', fmt(b.surface || 0)) +
+    (b.railing > 0 ? row('Railing', fmt(b.railing)) : '') +
+    (b.stairs > 0 ? row('Stairs', fmt(b.stairs)) : '') +
+    (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +
+    '<div class="row subtotal"><span class="label">Subtotal</span><span class="value">' + fmt(b.subtotal || 0) + '</span></div>' +
+    (b.discount > 0 ? row('Discount', '-' + fmt(b.discount)) : '') +
+    '<div class="row total"><span class="label">Total</span><span class="value">' + fmt(b.total || 0) + '</span></div></section>';
+
+  let renderHtml = '';
+  if (renderPhoto) {
+    renderHtml = card('AI preview', '<img class="render-img" src="' + renderPhoto.url + '" data-zoom>' +
+      '<div class="render-caption">' + esc(renderPhoto.swatch_name || renderPhoto.swatch_id || '') + ' on design photo</div>');
+  }
+  let photosHtml = '';
+  if (originals.length) {
+    photosHtml = card('Photos (' + originals.length + ')', '<div class="photo-grid">' +
+      originals.map(p => '<div class="photo-tile' + (p.is_design ? ' design' : '') + '" data-url="' + p.url + '"><img src="' + p.url + '">' + (p.is_design ? '<div class="label">Design</div>' : '') + '</div>').join('') + '</div>');
+  }
+
+  // HCP send
+  let hcpBtn, hcpStatus = '';
+  if (e.hcp.estimate_id) {
+    hcpBtn = '<button type="button" class="btn secondary" disabled>✓ Sent to Housecall Pro</button>';
+    hcpStatus = '<div class="hcp-status notice">Synced to HCP — customer ' + esc(e.hcp.customer_id) + ', estimate ' + esc(e.hcp.estimate_id) + '.</div>';
+  } else if (e.hcp.enabled) {
+    hcpBtn = '<button type="button" class="btn primary" id="hcpBtn" style="width:auto">Send to Housecall Pro</button>';
+  } else {
+    hcpBtn = '<button type="button" class="btn secondary" disabled title="Set HCP_API_KEY to enable">Send to Housecall Pro</button>';
+    hcpStatus = '<div class="hcp-status hint">Set <code>HCP_API_KEY</code> on the server to enable Housecall Pro sync.</div>';
+  }
+  const actions = '<div class="actions">' + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
+
+  content.innerHTML = customer + project + extras + totals + renderHtml + photosHtml + actions;
+
+  content.querySelectorAll('.photo-tile').forEach(t => t.addEventListener('click', () => openLightbox(t.dataset.url)));
+  content.querySelectorAll('img[data-zoom]').forEach(img => img.addEventListener('click', () => openLightbox(img.src)));
+  document.getElementById('deleteBtn').addEventListener('click', deleteEstimate);
+  const hb = document.getElementById('hcpBtn');
+  if (hb) hb.addEventListener('click', sendToHcp);
+}
+
+async function sendToHcp() {
+  const btn = document.getElementById('hcpBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/estimate/' + id + '/send-to-hcp', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Send failed');
+    location.reload();
+  } catch (err) {
+    alert('Housecall Pro send failed: ' + err.message);
+    btn.disabled = false; btn.textContent = 'Send to Housecall Pro';
+  }
+}
+async function deleteEstimate() {
+  if (!confirm('Delete estimate #' + id + ' and all its photos? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/estimate/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json()).error || 'Delete failed');
+    location.href = '/';
+  } catch (err) { alert('Delete failed: ' + err.message); }
+}
+function openLightbox(url) { lightboxImg.src = url; lightbox.classList.add('open'); }
+function card(title, inner) { return '<section class="card"><h2>' + esc(title) + '</h2>' + inner + '</section>'; }
+function row(label, value) { return '<div class="row"><span class="label">' + esc(label) + '</span><span class="value">' + esc(value) + '</span></div>'; }
+function f(label, value) { return '<div class="field"><div class="label">' + esc(label) + '</div><div class="value">' + esc(value) + '</div></div>'; }
+function fmt(v) { return '$' + Number(v).toFixed(2); }
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>

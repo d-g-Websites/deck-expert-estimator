@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visualizer — Deck Expert</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .photo-preview { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); display: block; margin-top: 0.5rem; }
+  .add-photo-btn { display: inline-block; background: #fff; color: var(--amber); border: 2px dashed var(--amber); padding: 0.85rem 1rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; }
+  .controls-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .controls-row select { flex: 1; }
+  .controls-row button { white-space: nowrap; }
+  .render-label { color: var(--gray); font-size: 0.85rem; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+  .error-inline { color: #b91c1c; background: #fee2e2; padding: 0.5rem 0.75rem; border-radius: var(--radius); margin-top: 0.75rem; font-size: 0.9rem; display: none; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="back">← Home</a>
+  <h1>Visualizer</h1>
+  <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
+</div>
+<main>
+  <div id="disabled" class="notice" style="display:none">The visualizer needs <code>OPENAI_API_KEY</code> set on the server.</div>
+  <div class="card">
+    <h2>1. Take or upload a deck photo</h2>
+    <label class="add-photo-btn">📷 Choose photo
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+    </label>
+    <img id="photoPreview" class="photo-preview" style="display:none">
+  </div>
+  <div class="card">
+    <h2>2. Pick a finish &amp; render</h2>
+    <div class="controls-row">
+      <select id="swatch"><option value="">Pick a stain/finish…</option></select>
+      <button type="button" id="renderBtn" class="btn secondary" disabled>Render</button>
+    </div>
+    <div id="renderError" class="error-inline"></div>
+    <div id="renderLabel" class="render-label" style="display:none">AI preview:</div>
+    <img id="renderPreview" class="photo-preview" style="display:none">
+  </div>
+</main>
+<script>
+const photoInput = document.getElementById('photoInput');
+const photoPreview = document.getElementById('photoPreview');
+const swatch = document.getElementById('swatch');
+const renderBtn = document.getElementById('renderBtn');
+const renderPreview = document.getElementById('renderPreview');
+const renderLabel = document.getElementById('renderLabel');
+const renderError = document.getElementById('renderError');
+let photoFile = null;
+
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  if (!cfg.visualizer_enabled) {
+    document.getElementById('disabled').style.display = 'block';
+    renderBtn.disabled = true;
+  }
+});
+fetch('/api/swatches').then(r => r.json()).then(swatches => {
+  for (const [id, info] of Object.entries(swatches)) {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = info.name;
+    swatch.appendChild(o);
+  }
+});
+
+function compressImage(file, maxDim, quality) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(b => { URL.revokeObjectURL(url); resolve(new File([b], 'deck.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', quality);
+    };
+    img.src = url;
+  });
+}
+
+photoInput.addEventListener('change', async () => {
+  if (!photoInput.files[0]) return;
+  photoFile = await compressImage(photoInput.files[0], 2048, 0.85);
+  photoPreview.src = URL.createObjectURL(photoFile);
+  photoPreview.style.display = 'block';
+  updateBtn();
+});
+swatch.addEventListener('change', updateBtn);
+function updateBtn() { renderBtn.disabled = !(photoFile && swatch.value); }
+
+renderBtn.addEventListener('click', async () => {
+  if (!photoFile || !swatch.value) return;
+  renderBtn.disabled = true;
+  renderBtn.textContent = 'Rendering… 20–40s';
+  renderError.style.display = 'none';
+  try {
+    const fd = new FormData();
+    fd.append('photo', photoFile);
+    fd.append('swatch_id', swatch.value);
+    const res = await fetch('/api/render', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Render failed');
+    renderPreview.src = 'data:image/png;base64,' + data.image_base64;
+    renderPreview.style.display = 'block';
+    renderLabel.style.display = 'block';
+    renderLabel.textContent = 'AI preview (' + swatch.options[swatch.selectedIndex].textContent + '):';
+  } catch (err) {
+    renderError.textContent = err.message;
+    renderError.style.display = 'block';
+  } finally {
+    renderBtn.textContent = 'Render';
+    updateBtn();
+  }
+});
+</script>
+</body>
+</html>

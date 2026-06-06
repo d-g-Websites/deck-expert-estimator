@@ -1,0 +1,21 @@
+{
+  "name": "deck-expert-estimator",
+  "version": "0.1.0",
+  "description": "Chicago Deck Expert — field estimator + AI visualizer, with Housecall Pro sync",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.1",
+    "openai": "^6.38.0",
+    "sharp": "^0.34.5"
+  }
+}

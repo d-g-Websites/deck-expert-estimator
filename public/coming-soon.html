@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coming soon — Deck Expert</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="topbar">
+  <a href="/estimate/new" class="back">← Back</a>
+  <h1 id="title">Coming soon</h1>
+  <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
+</div>
+<main>
+  <div class="card" style="text-align:center">
+    <p style="font-size:3rem;margin:0.5rem 0">🚧</p>
+    <h2 id="heading" style="justify-content:center">This estimator is coming soon</h2>
+    <p class="hint">We're building the Deck workflow first, then adapting it to the other structures.</p>
+    <p><a href="/estimate/new/deck" class="btn secondary">Start a Deck estimate instead</a></p>
+  </div>
+</main>
+<script>
+  const s = location.pathname.split('/').pop();
+  const name = s ? s.charAt(0).toUpperCase() + s.slice(1) : 'This';
+  document.getElementById('title').textContent = name;
+  document.getElementById('heading').textContent = name + ' estimator coming soon';
+</script>
+</body>
+</html>

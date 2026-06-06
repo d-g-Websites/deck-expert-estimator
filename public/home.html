@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deck Expert Estimator</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .home-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+  .home-actions a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 2.5rem 1rem; text-decoration: none;
+    color: var(--brown); font-size: 1.25rem; font-weight: 700; box-shadow: 0 1px 3px rgba(77,46,32,0.07); transition: border-color .1s, transform .1s; }
+  .home-actions a:hover { border-color: var(--amber); transform: translateY(-2px); }
+  .home-actions a.disabled { opacity: 0.5; pointer-events: none; }
+  .home-actions .icon { font-size: 2.5rem; }
+  .home-actions .sub { font-size: 0.8rem; font-weight: 500; color: var(--gray); }
+  .section-head { margin: 1.5rem 0 0.75rem; }
+  .section-head h2 { margin: 0; font-size: 1.05rem; color: var(--brown); }
+  .estimate-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .estimate-row { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; text-decoration: none; color: var(--text); display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; align-items: center; }
+  .estimate-row:hover { border-color: var(--amber); }
+  .estimate-row .name { font-weight: 700; color: var(--dark); }
+  .estimate-row .meta { font-size: 0.83rem; color: var(--gray); }
+  .estimate-row .total { font-weight: 700; color: var(--amber); text-align: right; }
+  .placeholder { color: var(--gray); background: #fff; padding: 1.5rem; border-radius: var(--radius); border: 1px dashed var(--line); text-align: center; }
+  @media (min-width: 560px) { .home-actions a { padding: 3.5rem 1rem; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Deck Expert Estimator</h1>
+  <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
+</div>
+
+<main>
+  <div class="home-actions">
+    <a href="/estimate/new">
+      <span class="icon">📋</span>
+      <span>New Estimate</span>
+      <span class="sub">Build a priced quote</span>
+    </a>
+    <a href="/visualizer" id="vizBtn">
+      <span class="icon">🎨</span>
+      <span>Visualizer</span>
+      <span class="sub">Preview a stain on a photo</span>
+    </a>
+  </div>
+
+  <div class="section-head"><h2>Recent estimates</h2></div>
+  <div id="estimateList" class="estimate-list"><div class="placeholder">Loading…</div></div>
+</main>
+
+<script>
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  if (!cfg.visualizer_enabled) {
+    const v = document.getElementById('vizBtn');
+    v.classList.add('disabled');
+    v.querySelector('.sub').textContent = 'Set OPENAI_API_KEY to enable';
+  }
+});
+
+const list = document.getElementById('estimateList');
+fetch('/api/estimates').then(r => r.json()).then(estimates => {
+  if (!estimates || estimates.length === 0) {
+    list.innerHTML = '<div class="placeholder">No estimates yet. Tap “New Estimate” to start one.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const e of estimates) {
+    const a = document.createElement('a');
+    a.href = '/estimate/' + e.id;
+    a.className = 'estimate-row';
+    const dt = new Date(e.created_at + 'Z');
+    const dateStr = dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const svc = [cap(e.structure_type), cap(e.service_type)].filter(Boolean).join(' · ');
+    a.innerHTML =
+      '<div><div class="name">' + esc(e.customer_name) + '</div>' +
+      '<div class="meta">#' + e.id + ' · ' + dateStr + ' · ' + svc + ' · ' + (e.surface_sqft || 0) + ' sq ft</div></div>' +
+      '<div style="text-align:right"><div class="total">$' + (e.total || 0).toFixed(2) + '</div>' +
+      '<div class="badge ' + e.status + '">' + e.status + '</div></div>';
+    list.appendChild(a);
+  }
+}).catch(err => { list.innerHTML = '<div class="placeholder">Failed to load: ' + esc(err.message) + '</div>'; });
+
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>

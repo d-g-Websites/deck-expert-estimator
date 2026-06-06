@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Deck Estimate — Deck Expert</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .extra-item { display: grid; grid-template-columns: 1fr 130px auto; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .extra-item .dollar-input input { padding: 0.65rem; }
+  .extra-item > button { background: none; border: none; color: var(--amber); font-size: 1.4rem; cursor: pointer; }
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem; }
+  .photo-tile { position: relative; aspect-ratio: 1/1; border-radius: var(--radius); overflow: hidden; border: 3px solid transparent; }
+  .photo-tile.design { border-color: var(--amber); }
+  .photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-tile .set-design { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); color: #fff; border: none; padding: 0.4rem; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
+  .photo-tile.design .set-design { background: var(--amber); }
+  .photo-tile .remove { position: absolute; top: 0.25rem; right: 0.25rem; background: rgba(0,0,0,0.7); color: #fff; border: none; width: 24px; height: 24px; border-radius: 12px; cursor: pointer; line-height: 1; }
+  .add-photo-btn { display: inline-block; background: #fff; color: var(--amber); border: 2px dashed var(--amber); padding: 0.75rem 1rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; }
+  .design-controls { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  .design-controls-row { display: flex; gap: 0.5rem; }
+  .design-controls-row select { flex: 1; }
+  .render-preview { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); margin-top: 0.5rem; }
+  .error-inline { color: #b91c1c; background: #fee2e2; padding: 0.5rem 0.75rem; border-radius: var(--radius); margin-top: 0.5rem; font-size: 0.9rem; display: none; }
+  .success-card { background: #fff; border-radius: var(--radius); padding: 2rem; text-align: center; border: 1px solid var(--line); }
+  .success-card h2 { color: #065f46; margin: 0 0 0.5rem; }
+  .success-card .actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/estimate/new" class="back">← Structures</a>
+  <h1>New Deck Estimate</h1>
+  <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
+</div>
+
+<main>
+  <div id="errorBanner" class="error-banner"></div>
+
+  <form id="estimateForm">
+    <section class="card">
+      <h2>Photos</h2>
+      <div id="photoGrid" class="photo-grid"></div>
+      <label class="add-photo-btn">+ Add photos
+        <input type="file" id="photoInput" accept="image/*" multiple capture="environment" style="display:none">
+      </label>
+      <div class="hint">Tap a photo to mark it as the design photo for an AI stain preview.</div>
+      <div id="designControls" class="design-controls" style="display:none">
+        <div class="design-controls-row">
+          <select id="renderSwatch"><option value="">Pick a finish…</option></select>
+          <button type="button" id="renderBtn" class="btn secondary" disabled>Render</button>
+        </div>
+        <div id="renderError" class="error-inline"></div>
+        <img id="renderPreview" class="render-preview" style="display:none">
+        <div id="renderActions" style="display:none;margin-top:0.5rem"><button type="button" id="removeRenderBtn" class="btn secondary">Remove render</button></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Customer info</h2>
+      <div class="field"><label for="customer_name">Name *</label><input type="text" id="customer_name" required autocomplete="name"></div>
+      <div class="field"><label for="customer_phone">Phone</label><input type="tel" id="customer_phone" autocomplete="tel"></div>
+      <div class="field"><label for="customer_email">Email</label><input type="email" id="customer_email" autocomplete="email"></div>
+      <div class="field"><label for="customer_address">Address</label><input type="text" id="customer_address" autocomplete="street-address"></div>
+      <div class="hint">Phone or email required (used to match the customer in Housecall Pro).</div>
+    </section>
+
+    <section class="card">
+      <h2>Project</h2>
+      <div class="grid-2">
+        <div class="field"><label for="service_type">Service</label><select id="service_type"></select></div>
+        <div class="field"><label for="opacity">Opacity</label><select id="opacity"></select></div>
+        <div class="field"><label for="wood_type">Wood type</label><select id="wood_type"></select></div>
+        <div class="field"><label for="prep_level">Prep</label><select id="prep_level"></select></div>
+      </div>
+      <div id="rateNotice" class="notice" style="display:none;margin-top:0.5rem"></div>
+    </section>
+
+    <section class="card">
+      <h2>Measurements</h2>
+      <div class="field"><label for="surface_sqft">Deck surface (sq ft) *</label><input type="number" id="surface_sqft" inputmode="decimal" step="0.1" min="0" required></div>
+      <div class="grid-2">
+        <div class="field"><label for="railing_lf">Railing (linear ft)</label><input type="number" id="railing_lf" inputmode="decimal" step="0.1" min="0"></div>
+        <div class="field"><label for="stairs_count">Stairs (steps)</label><input type="number" id="stairs_count" inputmode="numeric" step="1" min="0"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Extra services</h2>
+      <div id="extraItems"></div>
+      <button type="button" id="addExtra" class="btn secondary">+ Add line item</button>
+    </section>
+
+    <section class="card">
+      <h2>Discount</h2>
+      <div class="field"><label for="discount">Discount ($)</label><div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div></div>
+    </section>
+
+    <section class="card total-card">
+      <h2>Total</h2>
+      <div class="total-row"><span id="surfaceLabel">Surface</span><span id="surfaceTotal">$0.00</span></div>
+      <div class="total-row" id="railingRow" style="display:none"><span>Railing</span><span id="railingTotal">$0.00</span></div>
+      <div class="total-row" id="stairsRow" style="display:none"><span id="stairsLabel">Stairs</span><span id="stairsTotal">$0.00</span></div>
+      <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
+      <div class="total-row subtotal"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+      <div class="total-row" id="discountRow" style="display:none"><span>Discount</span><span id="discountAmount">-$0.00</span></div>
+      <div class="total-row total"><span>Total</span><span id="grandTotal">$0.00</span></div>
+    </section>
+
+    <button type="submit" id="saveBtn" class="btn primary">Save estimate</button>
+  </form>
+
+  <div id="successCard" class="success-card" style="display:none">
+    <h2>Estimate saved</h2>
+    <p>Saved as draft #<span id="savedId"></span>.</p>
+    <div class="actions">
+      <a href="#" id="viewLink" class="btn secondary">View estimate</a>
+      <a href="/estimate/new/deck" class="btn primary" style="width:auto">Start another</a>
+    </div>
+  </div>
+</main>
+
+<script>
+const form = document.getElementById('estimateForm');
+const errorBanner = document.getElementById('errorBanner');
+const saveBtn = document.getElementById('saveBtn');
+const els = {
+  service: document.getElementById('service_type'), opacity: document.getElementById('opacity'),
+  wood: document.getElementById('wood_type'), prep: document.getElementById('prep_level'),
+  sqft: document.getElementById('surface_sqft'), railing: document.getElementById('railing_lf'),
+  stairs: document.getElementById('stairs_count'), discount: document.getElementById('discount'),
+};
+let PRICING = null, PREP = null;
+
+// Photos / render state
+const photos = [];
+let renderedBlob = null, renderedSwatchId = null;
+const photoInput = document.getElementById('photoInput');
+const photoGrid = document.getElementById('photoGrid');
+const designControls = document.getElementById('designControls');
+const renderSwatch = document.getElementById('renderSwatch');
+const renderBtn = document.getElementById('renderBtn');
+const renderPreview = document.getElementById('renderPreview');
+const renderError = document.getElementById('renderError');
+const renderActions = document.getElementById('renderActions');
+
+fetch('/api/pricing/deck').then(r => r.json()).then(data => {
+  PRICING = data.pricing; PREP = data.prep_levels;
+  fillSelect(els.service, data.services);
+  fillSelect(els.opacity, data.opacities);
+  fillSelect(els.wood, data.wood_types);
+  fillSelect(els.prep, data.prep_levels);
+  updateTotal();
+});
+fetch('/api/swatches').then(r => r.json()).then(s => {
+  for (const [id, info] of Object.entries(s)) {
+    const o = document.createElement('option'); o.value = id; o.textContent = info.name; renderSwatch.appendChild(o);
+  }
+});
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  if (!cfg.visualizer_enabled) { renderBtn.disabled = true; renderBtn.title = 'Set OPENAI_API_KEY to enable'; }
+});
+
+function fillSelect(sel, obj) {
+  sel.innerHTML = '';
+  for (const [id, info] of Object.entries(obj)) {
+    const o = document.createElement('option'); o.value = id; o.textContent = info.label; sel.appendChild(o);
+  }
+  sel.addEventListener('change', updateTotal);
+}
+
+function surfaceRate() {
+  if (!PRICING) return null;
+  const byOpacity = PRICING.surface[els.service.value]; if (!byOpacity) return null;
+  const byWood = byOpacity[els.opacity.value]; if (!byWood) return null;
+  const r = byWood[els.wood.value];
+  return (r === null || r === undefined) ? null : r;
+}
+function num(el) { const v = parseFloat(el.value); return Number.isFinite(v) ? v : 0; }
+function fmt(v) { return '$' + v.toFixed(2); }
+
+function updateTotal() {
+  if (!PRICING) return;
+  const rate = surfaceRate();
+  const prepMult = (PREP[els.prep.value] || { multiplier: 1 }).multiplier;
+  const sqft = num(els.sqft), railingLf = num(els.railing), stairs = num(els.stairs), discount = num(els.discount);
+  const surface = rate == null ? 0 : rate * sqft * prepMult;
+  const railing = (PRICING.railing_lf[els.service.value] || 0) * railingLf;
+  const stairsTotal = PRICING.stairs_each * stairs;
+  const extras = getExtras().reduce((s, x) => s + x.price, 0);
+  const subtotal = surface + railing + stairsTotal + extras;
+  const grand = Math.max(0, subtotal - discount);
+
+  const notice = document.getElementById('rateNotice');
+  if (rate == null) {
+    notice.style.display = 'block';
+    notice.textContent = 'No rate set for this Service + Opacity + Wood combination. Surface will price at $0 — pick another combo or set the rate in pricing.js.';
+  } else { notice.style.display = 'none'; }
+
+  document.getElementById('surfaceLabel').textContent = rate == null ? 'Surface (no rate set)'
+    : 'Surface ($' + rate.toFixed(2) + '/sq ft × ' + sqft + (prepMult !== 1 ? ' × ' + prepMult + ' prep' : '') + ')';
+  document.getElementById('surfaceTotal').textContent = fmt(surface);
+  document.getElementById('railingRow').style.display = railing > 0 ? 'flex' : 'none';
+  document.getElementById('railingTotal').textContent = fmt(railing);
+  document.getElementById('stairsRow').style.display = stairsTotal > 0 ? 'flex' : 'none';
+  document.getElementById('stairsLabel').textContent = 'Stairs (' + stairs + ' steps)';
+  document.getElementById('stairsTotal').textContent = fmt(stairsTotal);
+  document.getElementById('extrasRow').style.display = extras > 0 ? 'flex' : 'none';
+  document.getElementById('extrasTotal').textContent = fmt(extras);
+  document.getElementById('subtotal').textContent = fmt(subtotal);
+  document.getElementById('discountRow').style.display = discount > 0 ? 'flex' : 'none';
+  document.getElementById('discountAmount').textContent = '-' + fmt(discount);
+  document.getElementById('grandTotal').textContent = fmt(grand);
+}
+[els.sqft, els.railing, els.stairs, els.discount].forEach(el => el.addEventListener('input', updateTotal));
+
+// --- Extra line items ---
+const extraItemsDiv = document.getElementById('extraItems');
+document.getElementById('addExtra').addEventListener('click', () => {
+  const row = document.createElement('div');
+  row.className = 'extra-item';
+  row.innerHTML = '<input type="text" placeholder="Description" class="extra-desc">' +
+    '<div class="dollar-input"><span>$</span><input type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" class="extra-price"></div>' +
+    '<button type="button">×</button>';
+  row.querySelector('.extra-desc').addEventListener('input', updateTotal);
+  row.querySelector('.extra-price').addEventListener('input', updateTotal);
+  row.querySelector('button').addEventListener('click', () => { row.remove(); updateTotal(); });
+  extraItemsDiv.appendChild(row);
+  row.querySelector('.extra-desc').focus();
+});
+function getExtras() {
+  const items = [];
+  for (const row of extraItemsDiv.querySelectorAll('.extra-item')) {
+    const desc = row.querySelector('.extra-desc').value.trim();
+    const price = parseFloat(row.querySelector('.extra-price').value);
+    if (desc && Number.isFinite(price)) items.push({ description: desc, price });
+  }
+  return items;
+}
+
+// --- Photos + render ---
+function compressImage(file, maxDim, quality) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(b => { URL.revokeObjectURL(url); resolve(new File([b], 'photo.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', quality);
+    };
+    img.src = url;
+  });
+}
+photoInput.addEventListener('change', async () => {
+  const files = Array.from(photoInput.files); photoInput.value = '';
+  for (const f of files) {
+    if (photos.length >= 10) { alert('Maximum 10 photos'); break; }
+    photos.push({ file: await compressImage(f, 2048, 0.85), isDesign: false });
+  }
+  renderPhotos();
+});
+function renderPhotos() {
+  photoGrid.innerHTML = '';
+  photos.forEach((p, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'photo-tile' + (p.isDesign ? ' design' : '');
+    tile.innerHTML = '<img src="' + URL.createObjectURL(p.file) + '">' +
+      '<button type="button" class="set-design">' + (p.isDesign ? 'Design photo' : 'Use as design') + '</button>' +
+      '<button type="button" class="remove">×</button>';
+    tile.querySelector('.set-design').addEventListener('click', () => { photos.forEach((q, j) => q.isDesign = j === i); clearRender(); renderPhotos(); });
+    tile.querySelector('.remove').addEventListener('click', () => { const wd = photos[i].isDesign; photos.splice(i, 1); if (wd) clearRender(); renderPhotos(); });
+    photoGrid.appendChild(tile);
+  });
+  designControls.style.display = photos.some(p => p.isDesign) ? 'block' : 'none';
+  updateRenderBtn();
+}
+function clearRender() { renderedBlob = null; renderedSwatchId = null; renderPreview.style.display = 'none'; renderActions.style.display = 'none'; renderError.style.display = 'none'; }
+document.getElementById('removeRenderBtn').addEventListener('click', clearRender);
+renderSwatch.addEventListener('change', updateRenderBtn);
+function updateRenderBtn() { renderBtn.disabled = !(photos.some(p => p.isDesign) && renderSwatch.value); renderBtn.textContent = renderedBlob ? 'Re-render' : 'Render'; }
+renderBtn.addEventListener('click', async () => {
+  const design = photos.find(p => p.isDesign); if (!design || !renderSwatch.value) return;
+  renderBtn.disabled = true; renderBtn.textContent = 'Rendering… 20–40s'; renderError.style.display = 'none';
+  try {
+    const fd = new FormData(); fd.append('photo', design.file); fd.append('swatch_id', renderSwatch.value);
+    const res = await fetch('/api/render', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Render failed');
+    const url = 'data:image/png;base64,' + data.image_base64;
+    renderedBlob = await (await fetch(url)).blob(); renderedSwatchId = renderSwatch.value;
+    renderPreview.src = url; renderPreview.style.display = 'block'; renderActions.style.display = 'block';
+  } catch (err) { renderError.textContent = err.message; renderError.style.display = 'block'; }
+  finally { updateRenderBtn(); }
+});
+
+// --- Submit ---
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorBanner.style.display = 'none';
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  const fd = new FormData();
+  fd.append('structure_type', 'deck');
+  fd.append('customer_name', document.getElementById('customer_name').value.trim());
+  fd.append('customer_phone', document.getElementById('customer_phone').value.trim());
+  fd.append('customer_email', document.getElementById('customer_email').value.trim());
+  fd.append('customer_address', document.getElementById('customer_address').value.trim());
+  fd.append('service_type', els.service.value);
+  fd.append('opacity', els.opacity.value);
+  fd.append('wood_type', els.wood.value);
+  fd.append('prep_level', els.prep.value);
+  fd.append('surface_sqft', String(num(els.sqft)));
+  fd.append('railing_lf', String(num(els.railing)));
+  fd.append('stairs_count', String(num(els.stairs)));
+  fd.append('extra_items', JSON.stringify(getExtras()));
+  fd.append('discount', String(num(els.discount)));
+  fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
+  for (const p of photos) fd.append('photos', p.file);
+  if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }
+  try {
+    const res = await fetch('/api/estimate', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to save');
+    form.style.display = 'none';
+    document.getElementById('savedId').textContent = data.id;
+    document.getElementById('viewLink').href = '/estimate/' + data.id;
+    document.getElementById('successCard').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    errorBanner.textContent = err.message; errorBanner.style.display = 'block';
+    saveBtn.disabled = false; saveBtn.textContent = 'Save estimate';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+</script>
+</body>
+</html>
