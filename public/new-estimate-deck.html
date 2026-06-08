@@ -174,9 +174,13 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   fillSelect(els.prep, data.prep_levels);
   updateTotal();
 });
-fetch('/api/swatches').then(r => r.json()).then(s => {
-  for (const [id, info] of Object.entries(s)) {
-    const o = document.createElement('option'); o.value = id; o.textContent = info.name; renderSwatch.appendChild(o);
+fetch('/api/swatches').then(r => r.json()).then(data => {
+  for (const [bid, brand] of Object.entries(data.brands || {})) {
+    const og = document.createElement('optgroup'); og.label = brand.name;
+    for (const [id, c] of Object.entries(brand.colors)) {
+      const o = document.createElement('option'); o.value = id; o.textContent = c.name; og.appendChild(o);
+    }
+    renderSwatch.appendChild(og);
   }
 });
 fetch('/api/config').then(r => r.json()).then(cfg => {

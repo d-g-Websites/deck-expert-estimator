@@ -9,7 +9,7 @@ import {
   STRUCTURE_TYPES, SERVICE_TYPES, OPACITIES, WOOD_TYPES, PREP_LEVELS,
   DECK_PRICING, computeDeckEstimate,
 } from "./pricing.js";
-import { SWATCHES, renderFinish, visualizerEnabled } from "./render.js";
+import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
 import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -91,12 +91,13 @@ app.get("/api/pricing/deck", requireAuth, (req, res) => {
   });
 });
 
-app.get("/api/swatches", requireAuth, (req, res) => {
-  const out = {};
-  for (const [id, info] of Object.entries(SWATCHES)) {
-    out[id] = { name: info.name, reference_url: `/swatches/${id}.jpg` };
+app.get("/api/swatches", requireAuth, async (req, res) => {
+  try {
+    res.json({ brands: await listSwatches() });
+  } catch (err) {
+    console.error("[swatches] error:", err);
+    res.status(500).json({ error: err.message || "Failed to list swatches" });
   }
-  res.json(out);
 });
 
 // ---- Housecall Pro: connectivity test + today's scheduled appointments ----
@@ -180,7 +181,7 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
     hcp: { customer_id: row.hcp_customer_id, estimate_id: row.hcp_estimate_id, synced_at: row.hcp_synced_at, enabled: hcpEnabled() },
     photos: photos.map(p => ({
       id: p.id, filename: p.filename, kind: p.kind, swatch_id: p.swatch_id,
-      swatch_name: p.swatch_id ? (SWATCHES[p.swatch_id] || {}).name || p.swatch_id : null,
+      swatch_name: p.swatch_id ? (SWATCHES[p.swatch_id] ? `${SWATCHES[p.swatch_id].brand_name} ${SWATCHES[p.swatch_id].name}` : p.swatch_id) : null,
       is_design: !!p.is_design, url: `/uploads/${row.id}/${p.filename}`,
     })),
   });
