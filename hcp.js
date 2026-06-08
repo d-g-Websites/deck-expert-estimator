@@ -11,10 +11,10 @@
 // in this one file on purpose.
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.HCP_API_BASE || "https://api.housecallpro.com/v1";
-// HCP API keys authenticate with "Token <key>". Some integrations use "Bearer".
-// Override with HCP_AUTH_SCHEME=Bearer if your key requires it.
-const AUTH_SCHEME = process.env.HCP_AUTH_SCHEME || "Token";
+const API_BASE = process.env.HCP_API_BASE || "https://api.housecallpro.com";
+// HCP API keys authenticate with "Bearer <key>" (matches the CSC app).
+// Override with HCP_AUTH_SCHEME=Token if your key requires it.
+const AUTH_SCHEME = process.env.HCP_AUTH_SCHEME || "Bearer";
 
 export function hcpEnabled() {
   return !!process.env.HCP_API_KEY;
@@ -42,6 +42,91 @@ async function hcpRequest(path, { method = "GET", body } = {}) {
     throw err;
   }
   return data;
+}
+
+function hcpListFromResponse(res, key) {
+  if (Array.isArray(res)) return res;
+  if (res && Array.isArray(res[key])) return res[key];
+  if (res && Array.isArray(res.data)) return res.data;
+  return [];
+}
+
+// Today's [00:00, 24:00) in America/Chicago, expressed as UTC ISO bounds.
+function centralDayBoundsUTC() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const ymd = `${parts.find(p => p.type === "year").value}-${parts.find(p => p.type === "month").value}-${parts.find(p => p.type === "day").value}`;
+  const probe = new Date(`${ymd}T12:00:00Z`);
+  const centralHour = parseInt(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago", hour12: false, hour: "2-digit",
+  }).formatToParts(probe).find(p => p.type === "hour").value, 10);
+  const offsetAbs = 12 - centralHour;
+  const start = new Date(Date.parse(`${ymd}T00:00:00Z`) + offsetAbs * 3600 * 1000);
+  const end = new Date(start.getTime() + 86400 * 1000);
+  return { start: start.toISOString(), end: end.toISOString(), ymd };
+}
+
+// Quick connectivity check used by /api/hcp/test while wiring up the key.
+export async function hcpTest() {
+  const result = { ok: true, checks: {} };
+  try {
+    const ping = await hcpRequest("/customers?per_page=1");
+    result.checks.auth = { ok: true, sample_response_keys: Object.keys(ping || {}) };
+  } catch (e) {
+    result.ok = false;
+    result.checks.auth = { ok: false, error: e.message };
+  }
+  return result;
+}
+
+// Pull estimates scheduled in HCP for today (Chicago time), with customer
+// contact info resolved, so a rep can tap one to prefill a new estimate.
+export async function scheduledToday() {
+  const { start, end, ymd } = centralDayBoundsUTC();
+  const qs = `scheduled_start_min=${encodeURIComponent(start)}&scheduled_start_max=${encodeURIComponent(end)}&per_page=100`;
+  const data = await hcpRequest(`/estimates?${qs}`);
+  const estimates = hcpListFromResponse(data, "estimates");
+  const customerCache = new Map();
+  const out = [];
+  for (const est of estimates) {
+    let cust = est.customer;
+    const custId = (cust && cust.id) || est.customer_id;
+    if (!cust && custId) {
+      if (customerCache.has(custId)) {
+        cust = customerCache.get(custId);
+      } else {
+        try {
+          cust = await hcpRequest(`/customers/${custId}`);
+          customerCache.set(custId, cust);
+        } catch (e) {
+          console.warn(`[scheduled-today] customer fetch ${custId} failed:`, e.message);
+        }
+      }
+    }
+    let scheduledStart = null;
+    const options = Array.isArray(est.options) ? est.options : [];
+    for (const opt of options) {
+      const s = opt && opt.schedule && opt.schedule.scheduled_start;
+      if (s && (!scheduledStart || s < scheduledStart)) scheduledStart = s;
+    }
+    const addresses = (cust && Array.isArray(cust.addresses)) ? cust.addresses : [];
+    const a0 = addresses[0] || {};
+    const addressStr = [a0.street, a0.city, a0.state, a0.zip].filter(Boolean).join(", ");
+    const name = `${(cust && cust.first_name) || ""} ${(cust && cust.last_name) || ""}`.trim() || est.customer_name || "(no name)";
+    out.push({
+      hcp_estimate_id: est.id,
+      hcp_estimate_number: est.estimate_number || null,
+      customer_name: name,
+      customer_phone: (cust && (cust.mobile_number || cust.home_number || cust.work_number)) || null,
+      customer_email: (cust && cust.email) || null,
+      customer_address: addressStr || null,
+      scheduled_start: scheduledStart,
+    });
+  }
+  out.sort((a, b) => (a.scheduled_start || "").localeCompare(b.scheduled_start || ""));
+  return { ymd, start, end, count: out.length, estimates: out };
 }
 
 function splitName(fullName) {

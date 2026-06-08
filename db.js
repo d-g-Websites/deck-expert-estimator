@@ -46,6 +46,9 @@ db.exec(`
 
     status TEXT NOT NULL DEFAULT 'draft',     -- draft | sent
 
+    -- Source HCP estimate this was prefilled from (today's-appointments sync)
+    source_hcp_estimate_id TEXT,
+
     -- Housecall Pro linkage (populated after a successful push)
     hcp_customer_id TEXT,
     hcp_estimate_id TEXT,
@@ -65,3 +68,9 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_estimate_photos_estimate ON estimate_photos(estimate_id);
 `);
+
+// --- lightweight migrations for databases created before a column was added ---
+const estimateCols = db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name);
+if (!estimateCols.includes("source_hcp_estimate_id")) {
+  db.exec("ALTER TABLE estimates ADD COLUMN source_hcp_estimate_id TEXT");
+}

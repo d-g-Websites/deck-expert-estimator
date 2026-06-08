@@ -10,7 +10,7 @@ import {
   DECK_PRICING, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, renderFinish, visualizerEnabled } from "./render.js";
-import { sendEstimateToHcp, hcpEnabled } from "./hcp.js";
+import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -97,6 +97,24 @@ app.get("/api/swatches", requireAuth, (req, res) => {
     out[id] = { name: info.name, reference_url: `/swatches/${id}.jpg` };
   }
   res.json(out);
+});
+
+// ---- Housecall Pro: connectivity test + today's scheduled appointments ----
+app.get("/api/hcp/test", requireAuth, async (req, res) => {
+  if (!hcpEnabled()) return res.status(503).json({ error: "Housecall Pro not configured" });
+  try { res.json(await hcpTest()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/hcp/scheduled-today", requireAuth, async (req, res) => {
+  try {
+    if (!hcpEnabled()) return res.status(503).json({ error: "Housecall Pro not configured" });
+    const result = await scheduledToday();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("[scheduled-today] error:", err.message);
+    res.status(500).json({ error: err.message || "Failed to fetch scheduled estimates" });
+  }
 });
 
 // ---- AI render ----
@@ -207,6 +225,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const railing_lf = b.railing_lf ? parseFloat(b.railing_lf) : 0;
     const stairs_count = b.stairs_count ? parseInt(b.stairs_count, 10) : 0;
     const discount = b.discount ? parseFloat(b.discount) : 0;
+    const source_hcp_estimate_id = (b.source_hcp_estimate_id || "").trim() || null;
     let extras = [];
     try { extras = b.extra_items ? JSON.parse(b.extra_items) : []; } catch (_) { extras = []; }
 
@@ -241,13 +260,13 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         customer_name, customer_phone, customer_email, customer_address,
         structure_type, service_type, opacity, wood_type, prep_level,
         surface_sqft, railing_lf, stairs_count,
-        extra_items, discount_cents, pricing_snapshot
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, service_type, opacity, wood_type, prep_level,
       surface_sqft, railing_lf, stairs_count,
-      JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown)
+      JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown), source_hcp_estimate_id
     );
     const estimateId = result.lastInsertRowid;
 

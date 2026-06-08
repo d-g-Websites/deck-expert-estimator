@@ -3,18 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>What are we estimating? — Deck Expert</title>
+<title>New Estimate — Deck Expert</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
+  .intro { color: var(--gray); margin: 0 0 1rem; font-weight: 600; }
+  .big-sync { width: 100%; background: var(--amber); color: #fff; border: none; padding: 0.9rem; border-radius: var(--radius); font-size: 1rem; font-weight: 700; cursor: pointer; }
+  .big-sync:hover:not(:disabled) { background: var(--amber-dark); }
+  .big-sync:disabled { background: #c9bfb6; cursor: wait; }
+  .card .head { display: flex; align-items: baseline; gap: 0.5rem; margin: 0 0 0.85rem; }
+  .card .head h2 { margin: 0; }
+  .card .head .sub { color: var(--gray); font-size: 0.82rem; flex: 1; }
+  .icon-btn { background: none; border: 1px solid var(--line); color: var(--amber); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.8rem; cursor: pointer; }
+  .appt-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .appt { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; width: 100%; text-align: left;
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem 0.9rem; cursor: pointer; }
+  .appt:hover { border-color: var(--amber); }
+  .appt .time { font-weight: 700; color: var(--brown); font-size: 0.9rem; white-space: nowrap; }
+  .appt .name { font-weight: 700; color: var(--dark); }
+  .appt .meta { font-size: 0.8rem; color: var(--gray); }
+  .appt .arrow { color: var(--gray); font-size: 1.3rem; }
+  .empty { color: var(--gray); text-align: center; padding: 1rem; }
+  .error { color: #b91c1c; background: #fee2e2; padding: 0.6rem 0.8rem; border-radius: var(--radius); margin-top: 0.5rem; font-size: 0.9rem; }
+  .prefill-banner { display: none; align-items: center; gap: 0.75rem; background: var(--cream); border: 1px solid var(--amber); border-radius: var(--radius); padding: 0.85rem 1rem; margin-bottom: 1rem; }
+  .prefill-banner .label { flex: 1; }
+  .prefill-banner strong { color: var(--brown); display: block; }
+  .prefill-banner .sub { color: var(--gray); font-size: 0.82rem; }
+  .prefill-banner .clear { background: none; border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 0.35rem 0.7rem; cursor: pointer; font-size: 0.82rem; }
   .structure-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .structure-grid a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem;
-    background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 2rem 1rem; text-decoration: none;
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.75rem 1rem; text-decoration: none;
     color: var(--brown); font-size: 1.15rem; font-weight: 700; box-shadow: 0 1px 3px rgba(77,46,32,0.07); }
   .structure-grid a:hover { border-color: var(--amber); }
-  .structure-grid .icon { font-size: 2.25rem; }
+  .structure-grid .icon { font-size: 2.1rem; }
   .structure-grid .soon { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gray); }
   .structure-grid a.soon-card { opacity: 0.75; }
-  .intro { color: var(--gray); margin: 0 0 1rem; }
 </style>
 </head>
 <body>
@@ -24,11 +46,45 @@
   <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
 </div>
 <main>
+  <div id="prefillBanner" class="prefill-banner">
+    <div class="label">
+      <strong>Prefilling for <span id="prefillName"></span></strong>
+      <span class="sub" id="prefillSub"></span>
+    </div>
+    <button type="button" class="clear" id="clearPrefill">Clear</button>
+  </div>
+
+  <section class="card" id="syncCard" style="display:none">
+    <div class="head">
+      <h2>Today's appointments</h2>
+      <span class="sub" id="syncMeta"></span>
+      <button type="button" class="icon-btn" id="refreshBtn" style="display:none">Refresh</button>
+    </div>
+    <div id="syncContainer">
+      <button type="button" class="big-sync" id="syncBtn">Sync today's appointments from Housecall Pro</button>
+    </div>
+    <div id="syncError" class="error" style="display:none"></div>
+    <div class="appt-list" id="apptList"></div>
+  </section>
+
   <p class="intro">What are we estimating?</p>
-  <div id="grid" class="structure-grid"><div class="placeholder">Loading…</div></div>
+  <div id="grid" class="structure-grid"><div class="empty">Loading…</div></div>
 </main>
+
 <script>
 const ICONS = { deck: '🪵', porch: '🏠', fence: '🚧', pergola: '🏛️', gazebo: '⛱️' };
+const syncCard = document.getElementById('syncCard');
+const syncBtn = document.getElementById('syncBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+const syncContainer = document.getElementById('syncContainer');
+const apptList = document.getElementById('apptList');
+const syncMeta = document.getElementById('syncMeta');
+const syncError = document.getElementById('syncError');
+const prefillBanner = document.getElementById('prefillBanner');
+const prefillName = document.getElementById('prefillName');
+const prefillSub = document.getElementById('prefillSub');
+
+// --- structure grid ---
 fetch('/api/config').then(r => r.json()).then(cfg => {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
@@ -40,7 +96,95 @@ fetch('/api/config').then(r => r.json()).then(cfg => {
     if (!info.enabled) a.classList.add('soon-card');
     grid.appendChild(a);
   }
+  if (cfg.hcp_enabled) { syncCard.style.display = 'block'; initSync(); }
 });
+
+// --- HCP "today's appointments" sync ---
+const centralYmd = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const cacheKey = () => 'scheduledToday:' + centralYmd();
+function fmtCentralTime(iso) {
+  if (!iso) return '';
+  try { return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)); } catch (_) { return ''; }
+}
+function fmtSyncedAt(iso) {
+  try { return 'Synced ' + new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)); } catch (_) { return ''; }
+}
+function renderAppts(list, syncedAt) {
+  apptList.innerHTML = '';
+  if (!list || !list.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No appointments scheduled in Housecall Pro for today.';
+    apptList.appendChild(empty);
+  } else {
+    for (const a of list) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'appt';
+      const metaBits = [a.customer_phone, a.customer_email, a.customer_address].filter(Boolean);
+      btn.innerHTML = '<div class="time">' + (fmtCentralTime(a.scheduled_start) || '—') + '</div>' +
+        '<div><div class="name"></div><div class="meta"></div></div><div class="arrow">›</div>';
+      btn.querySelector('.name').textContent = a.customer_name || '(no name)';
+      btn.querySelector('.meta').textContent = metaBits.join(' · ');
+      btn.addEventListener('click', () => choosePrefill(a));
+      apptList.appendChild(btn);
+    }
+  }
+  syncContainer.style.display = 'none';
+  refreshBtn.style.display = '';
+  syncMeta.textContent = fmtSyncedAt(syncedAt);
+}
+function choosePrefill(a) {
+  sessionStorage.setItem('estimate.prefill', JSON.stringify({
+    source_hcp_estimate_id: a.hcp_estimate_id,
+    customer_name: a.customer_name || '', customer_phone: a.customer_phone || '',
+    customer_email: a.customer_email || '', customer_address: a.customer_address || '',
+    scheduled_start: a.scheduled_start || null,
+  }));
+  updatePrefillBanner();
+  prefillBanner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function updatePrefillBanner() {
+  const raw = sessionStorage.getItem('estimate.prefill');
+  if (!raw) { prefillBanner.style.display = 'none'; return; }
+  try {
+    const p = JSON.parse(raw);
+    prefillName.textContent = p.customer_name || '(no name)';
+    const bits = [];
+    if (p.scheduled_start) bits.push(fmtCentralTime(p.scheduled_start));
+    if (p.customer_phone) bits.push(p.customer_phone);
+    prefillSub.textContent = bits.join(' · ') + ' — pick what we\'re estimating below';
+    prefillBanner.style.display = 'flex';
+  } catch (_) { prefillBanner.style.display = 'none'; }
+}
+document.getElementById('clearPrefill').addEventListener('click', () => { sessionStorage.removeItem('estimate.prefill'); updatePrefillBanner(); });
+
+async function sync() {
+  syncBtn.disabled = true; refreshBtn.disabled = true; syncBtn.textContent = 'Syncing…'; syncError.style.display = 'none';
+  try {
+    const res = await fetch('/api/hcp/scheduled-today');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Sync failed');
+    const syncedAt = new Date().toISOString();
+    localStorage.setItem(cacheKey(), JSON.stringify({ estimates: data.estimates, syncedAt }));
+    renderAppts(data.estimates, syncedAt);
+  } catch (e) {
+    syncError.textContent = e.message; syncError.style.display = 'block';
+  } finally {
+    syncBtn.disabled = false; refreshBtn.disabled = false;
+    syncBtn.textContent = "Sync today's appointments from Housecall Pro";
+  }
+}
+function initSync() {
+  syncBtn.addEventListener('click', sync);
+  refreshBtn.addEventListener('click', sync);
+  updatePrefillBanner();
+  const raw = localStorage.getItem(cacheKey());
+  if (raw) { try { const c = JSON.parse(raw); renderAppts(c.estimates || [], c.syncedAt); } catch (_) {} }
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('scheduledToday:') && k !== cacheKey()) { localStorage.removeItem(k); i--; }
+  }
+}
 </script>
 </body>
 </html>

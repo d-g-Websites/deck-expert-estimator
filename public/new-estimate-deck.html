@@ -58,6 +58,7 @@
 
     <section class="card">
       <h2>Customer info</h2>
+      <div id="prefillNote" class="notice" style="display:none;margin-bottom:1rem"></div>
       <div class="field"><label for="customer_name">Name *</label><input type="text" id="customer_name" required autocomplete="name"></div>
       <div class="field"><label for="customer_phone">Phone</label><input type="tel" id="customer_phone" autocomplete="tel"></div>
       <div class="field"><label for="customer_email">Email</label><input type="email" id="customer_email" autocomplete="email"></div>
@@ -131,6 +132,27 @@ const els = {
   stairs: document.getElementById('stairs_count'), discount: document.getElementById('discount'),
 };
 let PRICING = null, PREP = null;
+
+// --- HCP appointment prefill (set on the structure picker) ---
+let sourceHcpEstimateId = null;
+(function applyPrefill() {
+  const raw = sessionStorage.getItem('estimate.prefill');
+  if (!raw) return;
+  try {
+    const p = JSON.parse(raw);
+    sourceHcpEstimateId = p.source_hcp_estimate_id || null;
+    const set = (id, v) => { if (v) document.getElementById(id).value = v; };
+    set('customer_name', p.customer_name);
+    set('customer_phone', p.customer_phone);
+    set('customer_email', p.customer_email);
+    set('customer_address', p.customer_address);
+    const note = document.getElementById('prefillNote');
+    if (note && (p.customer_name || sourceHcpEstimateId)) {
+      note.style.display = 'block';
+      note.textContent = 'Prefilled from Housecall Pro appointment' + (p.customer_name ? ' for ' + p.customer_name : '') + '.';
+    }
+  } catch (_) {}
+})();
 
 // Photos / render state
 const photos = [];
@@ -302,6 +324,7 @@ form.addEventListener('submit', async (e) => {
   saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
   const fd = new FormData();
   fd.append('structure_type', 'deck');
+  if (sourceHcpEstimateId) fd.append('source_hcp_estimate_id', sourceHcpEstimateId);
   fd.append('customer_name', document.getElementById('customer_name').value.trim());
   fd.append('customer_phone', document.getElementById('customer_phone').value.trim());
   fd.append('customer_email', document.getElementById('customer_email').value.trim());
@@ -322,6 +345,7 @@ form.addEventListener('submit', async (e) => {
     const res = await fetch('/api/estimate', { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to save');
+    sessionStorage.removeItem('estimate.prefill');
     form.style.display = 'none';
     document.getElementById('savedId').textContent = data.id;
     document.getElementById('viewLink').href = '/estimate/' + data.id;
