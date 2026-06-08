@@ -11,7 +11,7 @@
 // in this one file on purpose.
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.HCP_API_BASE || "https://api.housecallpro.com";
+const API_BASE = process.env.HCP_API_BASE || "https://api.housecallpro.com/v1";
 // HCP API keys authenticate with "Bearer <key>" (matches the CSC app).
 // Override with HCP_AUTH_SCHEME=Token if your key requires it.
 const AUTH_SCHEME = process.env.HCP_AUTH_SCHEME || "Bearer";
