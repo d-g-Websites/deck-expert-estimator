@@ -8,11 +8,11 @@ const SRC = "public/swatches/_source";
 const sheet1 = {
   file: `${SRC}/bm_solid_sheet1.jpg`, cols: 7, rows: 7,
   cells: [
-    ["Bleached Gray","ES-78"],["Maritime White","OC-5"],["Sea Gull Gray","ES-72"],["Cougar Brown","2106-40"],["Santa Rosa","1189"],["Fox Run","1229"],["Arbor White","ES-01"],
-    ["Natural","ES-10"],["Bennington Gray","HC-82"],["Briarwood","HC-175"],["Smoked Oyster","2109-40"],["Garrison Red","HC-66"],["Georgian Brick","HC-50"],["Richmond Bisque","HC-177"],
-    ["Cedar","ES-40"],["Beige Gray","ES-51"],["Rustic Taupe","999"],["Pinch of Spice","1449"],["Boston Brick","2092-30"],["Terra Mauve","105"],["Bradstreet Beige","HC-48"],
-    ["Teak","ES-30"],["Alexandria Beige","HC-77"],["Fairview Taupe","HC-85"],["Beaujolais","1259"],["Sweet Rosy Brown","1302"],["California Rustic","ES-24"],["Potters Clay","1221"],
-    ["Chestnut Brown","ES-65"],["Cabot Trail","998"],["Dragon's Breath","1547"],["New Pilgrim Red","ES-21"],["Barn Red","ES-22"],["Rabbit Brown","2105-30"],["Natural Cedartone","ES-45"],
+    null,["Maritime White","OC-5"],["Sea Gull Gray","ES-72"],["Cougar Brown","2106-40"],["Santa Rosa","1189"],["Fox Run","1229"],["Arbor White","ES-01"],
+    null,["Bennington Gray","HC-82"],["Briarwood","HC-175"],["Smoked Oyster","2109-40"],["Garrison Red","HC-66"],["Georgian Brick","HC-50"],["Richmond Bisque","HC-177"],
+    null,["Beige Gray","ES-51"],["Rustic Taupe","999"],["Pinch of Spice","1449"],["Boston Brick","2092-30"],["Terra Mauve","105"],["Bradstreet Beige","HC-48"],
+    null,["Alexandria Beige","HC-77"],["Fairview Taupe","HC-85"],["Beaujolais","1259"],["Sweet Rosy Brown","1302"],["California Rustic","ES-24"],["Potters Clay","1221"],
+    null,["Cabot Trail","998"],["Dragon's Breath","1547"],["New Pilgrim Red","ES-21"],["Barn Red","ES-22"],["Rabbit Brown","2105-30"],["Natural Cedartone","ES-45"],
     ["Redwood","ES-20"],["Spanish Moss","ES-44"],["River Rock","2139-10"],["Vintage Wine","2116-20"],["Bison Brown","2113-30"],["Leather Saddle Brown","2100-20"],["Hidden Valley","1134"],
     ["Mahogany","ES-60"],["Cordovan Brown","ES-62"],["Black","HC-190"],["Dark Purple","2073-10"],["Oxford Brown","ES-67"],["Fresh Brew","1232"],["Abbey Brown","1225"],
   ],

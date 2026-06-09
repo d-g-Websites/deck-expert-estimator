@@ -1,9 +1,4 @@
 {
-  "bleached_gray": {
-    "name": "Bleached Gray ES-78",
-    "hex": "#d2cbbb",
-    "desc": "Benjamin Moore Bleached Gray ES-78 — a solid opaque deck stain in this color"
-  },
   "maritime_white": {
     "name": "Maritime White OC-5",
     "hex": "#e4dece",
@@ -33,11 +28,6 @@
     "name": "Arbor White ES-01",
     "hex": "#f1ede1",
     "desc": "Benjamin Moore Arbor White ES-01 — a solid opaque deck stain in this color"
-  },
-  "natural": {
-    "name": "Natural ES-10",
-    "hex": "#d9ac69",
-    "desc": "Benjamin Moore Natural ES-10 — a solid opaque deck stain in this color"
   },
   "bennington_gray": {
     "name": "Bennington Gray HC-82",
@@ -69,11 +59,6 @@
     "hex": "#d5c6a9",
     "desc": "Benjamin Moore Richmond Bisque HC-177 — a solid opaque deck stain in this color"
   },
-  "cedar": {
-    "name": "Cedar ES-40",
-    "hex": "#dd9e57",
-    "desc": "Benjamin Moore Cedar ES-40 — a solid opaque deck stain in this color"
-  },
   "beige_gray": {
     "name": "Beige Gray ES-51",
     "hex": "#a09380",
@@ -104,11 +89,6 @@
     "hex": "#cebea7",
     "desc": "Benjamin Moore Bradstreet Beige HC-48 — a solid opaque deck stain in this color"
   },
-  "teak": {
-    "name": "Teak ES-30",
-    "hex": "#b38049",
-    "desc": "Benjamin Moore Teak ES-30 — a solid opaque deck stain in this color"
-  },
   "alexandria_beige": {
     "name": "Alexandria Beige HC-77",
     "hex": "#a1927f",
@@ -138,11 +118,6 @@
     "name": "Potters Clay 1221",
     "hex": "#b2896b",
     "desc": "Benjamin Moore Potters Clay 1221 — a solid opaque deck stain in this color"
-  },
-  "chestnut_brown": {
-    "name": "Chestnut Brown ES-65",
-    "hex": "#947147",
-    "desc": "Benjamin Moore Chestnut Brown ES-65 — a solid opaque deck stain in this color"
   },
   "cabot_trail": {
     "name": "Cabot Trail 998",
