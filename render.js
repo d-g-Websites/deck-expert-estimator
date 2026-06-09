@@ -145,7 +145,9 @@ function buildPrompt(swatch, hasReference) {
   }
   lines.push(
     `Make it look like a real stain job: apply the color as a SEMI-TRANSPARENT stain so the wood grain and board-to-board variation still show through — not opaque paint, and not glossy. Use a natural matte / low-sheen finish: no shine, glow, wet look, or HDR.`,
-    `Do NOT brighten the overall photo, boost exposure or contrast, or change the scene. Keep the exact original lighting, exposure, white balance, shadows, sky, house, siding, plants, furniture, and perspective. ONLY the wood surfaces change color.`,
+    `PRESERVE THE REAL WOOD: keep the existing boards' actual texture and character — grain, knots, saw and brush marks, surface checking/cracks, nail holes, dirt, and natural weathering and age. Keep each board's individual color and wear variation. The boards must look like genuine, slightly weathered real wood that was stained — NOT smooth plastic, CGI, 3D-rendered, or clean uniform toy/Lego-like planks.`,
+    `Do NOT enhance, smooth, sharpen, denoise, retouch, or beautify the surfaces in any way. Retain the original photo's grit, texture, and imperfections.`,
+    `Do NOT brighten the overall photo, boost exposure or contrast, or change the scene. Keep the exact original lighting, exposure, white balance, shadows, sky, house, siding, plants, furniture, and perspective. ONLY the wood color changes.`,
     `The applied color must be clearly visible and accurate to the swatch — just slightly muted and matte. Do NOT leave the deck looking faded, washed-out, or like bare/untinted wood.`,
   );
   return lines.join(" ");
