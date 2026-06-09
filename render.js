@@ -28,15 +28,15 @@ export const STAIN_BRANDS = {
   twp: {
     name: "TWP 1500 Series",
     colors: {
-      cedartone:          { name: "1501 Cedartone",         hex: "#B0762F", desc: "TWP 1501 Cedartone — a warm golden-brown cedar-toned semi-transparent oil stain, wood grain visible" },
-      redwood:            { name: "1502 Redwood",           hex: "#9E4521", desc: "TWP 1502 Redwood — a reddish-orange redwood-toned semi-transparent oil stain, grain visible" },
-      dark_oak:           { name: "1503 Dark Oak",          hex: "#6F5638", desc: "TWP 1503 Dark Oak — a muted grayish-brown dark-oak semi-transparent oil stain" },
-      black_walnut:       { name: "1504 Black Walnut",      hex: "#3D2B1B", desc: "TWP 1504 Black Walnut — a dark espresso-brown semi-transparent oil stain, grain still visible" },
-      california_redwood: { name: "1511 California Redwood", hex: "#AE5E27", desc: "TWP 1511 California Redwood — a rich warm reddish-brown redwood semi-transparent oil stain" },
-      honeytone:          { name: "1515 Honeytone",         hex: "#C68B3C", desc: "TWP 1515 Honeytone — a light golden honey-toned semi-transparent oil stain" },
-      rustic:             { name: "1516 Rustic",            hex: "#8E4E2B", desc: "TWP 1516 Rustic — a warm reddish rustic-brown semi-transparent oil stain" },
-      pecan:              { name: "1520 Pecan",             hex: "#9E6A34", desc: "TWP 1520 Pecan — a medium warm tan/pecan-brown semi-transparent oil stain" },
-      natural:            { name: "1530 Natural",           hex: "#C08A40", desc: "TWP 1530 Natural — a light natural golden tone semi-transparent oil stain (similar to 1501 Cedartone)" },
+      cedartone:          { name: "1501 Cedartone",         hex: "#B0762F", file: "1501-cedartone.png",          desc: "TWP 1501 Cedartone — a warm golden-brown cedar-toned semi-transparent oil stain, wood grain visible" },
+      redwood:            { name: "1502 Redwood",           hex: "#9E4521", file: "1502-redwood.png",            desc: "TWP 1502 Redwood — a reddish-orange redwood-toned semi-transparent oil stain, grain visible" },
+      dark_oak:           { name: "1503 Dark Oak",          hex: "#6F5638", file: "1053-darkoak.png",            desc: "TWP 1503 Dark Oak — a muted grayish-brown dark-oak semi-transparent oil stain" },
+      black_walnut:       { name: "1504 Black Walnut",      hex: "#3D2B1B", file: "1504-blackwalnut.png",        desc: "TWP 1504 Black Walnut — a dark espresso-brown semi-transparent oil stain, grain still visible" },
+      california_redwood: { name: "1511 California Redwood", hex: "#AE5E27", file: "1511-california-redwood.png", desc: "TWP 1511 California Redwood — a rich warm reddish-brown redwood semi-transparent oil stain" },
+      honeytone:          { name: "1515 Honeytone",         hex: "#C68B3C", file: "1515-honeytone.png",          desc: "TWP 1515 Honeytone — a light golden honey-toned semi-transparent oil stain" },
+      rustic:             { name: "1516 Rustic",            hex: "#8E4E2B", file: "1516-rustic.png",             desc: "TWP 1516 Rustic — a warm reddish rustic-brown semi-transparent oil stain" },
+      pecan:              { name: "1520 Pecan",             hex: "#9E6A34", file: "1520-pecan.png",              desc: "TWP 1520 Pecan — a medium warm tan/pecan-brown semi-transparent oil stain" },
+      natural:            { name: "1530 Natural",           hex: "#C08A40", file: "1530-natural.png",            desc: "TWP 1530 Natural — a light natural golden tone semi-transparent oil stain (similar to 1501 Cedartone)" },
     },
   },
   // TODO: populate from the Rymar chart (color name + hex + desc per swatch).
@@ -57,7 +57,7 @@ export const SWATCHES = (() => {
   for (const [brandId, brand] of Object.entries(STAIN_BRANDS)) {
     for (const [colorId, color] of Object.entries(brand.colors)) {
       const id = `${brandId}__${colorId}`;
-      out[id] = { id, brand_id: brandId, brand_name: brand.name, color_id: colorId, name: color.name, hex: color.hex || null, desc: color.desc };
+      out[id] = { id, brand_id: brandId, brand_name: brand.name, color_id: colorId, name: color.name, hex: color.hex || null, file: color.file || null, desc: color.desc };
     }
   }
   return out;
@@ -80,8 +80,11 @@ const REF_EXTS = [".jpg", ".jpeg", ".png", ".webp"];
 async function findReference(swatchId) {
   const s = SWATCHES[swatchId];
   if (!s) return null;
-  for (const ext of REF_EXTS) {
-    const rel = `${s.brand_id}/${s.color_id}${ext}`;
+  // Prefer an explicit filename; otherwise scan <color_id>.<ext>.
+  const candidates = [];
+  if (s.file) candidates.push(`${s.brand_id}/${s.file}`);
+  for (const ext of REF_EXTS) candidates.push(`${s.brand_id}/${s.color_id}${ext}`);
+  for (const rel of candidates) {
     const p = path.join(SWATCH_DIR, rel);
     try { await fs.access(p); return { path: p, url: `/swatches/${rel}` }; } catch (_) { /* next */ }
   }
