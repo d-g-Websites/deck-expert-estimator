@@ -121,7 +121,7 @@ function buildPrompt(swatch, hasReference) {
   ];
   if (hasReference) {
     lines.push(
-      `IMAGE 1 is a REFERENCE swatch for the "${finishLabel}" finish. Use it ONLY to judge the hue / color family and how much wood grain shows through. IMPORTANT: this swatch is photographed on fresh wood under bright studio lighting, so it looks much more vivid and saturated than a real installed deck — render the color SIGNIFICANTLY more muted, desaturated and natural than the swatch.`,
+      `IMAGE 1 is a small REFERENCE swatch shown ONLY to indicate the general HUE of "${finishLabel}". The swatch is a heavy, full-strength coat on bright fresh wood under studio light — do NOT reproduce that intensity or darkness. Apply only a light fraction of that strength.`,
       `IMAGE 2 is the TARGET: the customer's actual deck. Apply the "${finishLabel}" color to it.`,
       `TASK: refinish ONLY the wood deck surfaces (floor boards, stairs, railings) in Image 2 to a realistic, slightly muted version of the "${finishLabel}" color.`,
     );
@@ -133,7 +133,8 @@ function buildPrompt(swatch, hasReference) {
   lines.push(
     `CRITICAL — keep it natural and understated:`,
     `Do NOT brighten the image, raise exposure, add contrast, or oversaturate. Keep the EXACT original lighting, exposure, white balance, shadows, and time of day from Image 2.`,
-    `The stain is a thin SEMI-TRANSPARENT finish, not paint: let the natural wood grain and board-to-board tone variation show through, and dial the color intensity well down so it reads like a real applied stain that has soaked into the wood (roughly 30–35% less saturated and a bit lighter than the swatch). When in doubt, err on the side of subtle and lighter rather than rich and deep.`,
+    `Apply the stain as a TRANSLUCENT wash — a light tinted glaze at roughly 40% strength, NOT paint. The deck's existing wood grain, knots, and natural board-to-board light/dark variation MUST stay clearly visible through the tint. The boards must still read as real wood that was lightly tinted, never as a solid, uniformly recoated or painted surface.`,
+    `Keep the deck close to its ORIGINAL brightness — only a gentle hue shift, not a full recolor. Do NOT darken the deck much; even the darker colors (Dark Oak, Black Walnut) must stay relatively light and translucent rather than deep, opaque, or near-black. When in doubt, err lighter, more subtle, and more transparent.`,
     `Use a natural matte / low-sheen finish — no glossy shine, no glow, no HDR look, no wet appearance.`,
     `Preserve everything else exactly as-is: same perspective, lighting, house, siding, furniture, plants, sky, and objects on the deck. Only the wood surface color/tone changes. The result should look like an ordinary phone photo of a freshly stained deck taken in the same conditions.`,
   );
