@@ -20,6 +20,7 @@ import sharp from "sharp";
 import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
+import bmSolidColors from "./bm-colors.json" with { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SWATCH_DIR = path.join(__dirname, "public", "swatches");
@@ -57,12 +58,12 @@ export const STAIN_BRANDS = {
       teak:                { name: "5040 Teak",               hex: "#7A3B2A", file: "teak-5040.png",                  desc: "Rymar 5040 Teak — a deep reddish-brown teak/mahogany-toned semi-transparent penetrating wood sealer" },
     },
   },
-  // TODO: populate with the subset of Benjamin Moore solid colors Deck Expert
-  // offers (name + code + sampled hex + file). Rendered as opaque (covers grain).
+  // Benjamin Moore solid (opaque) deck stains — extracted from the BM color
+  // chart; flat color swatches generated in public/swatches/benjamin_moore_solid/.
   benjamin_moore_solid: {
     name: "Benjamin Moore Solid",
     opaque: true,
-    colors: {},
+    colors: bmSolidColors,
   },
 };
 
