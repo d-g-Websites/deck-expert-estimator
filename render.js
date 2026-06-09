@@ -117,22 +117,25 @@ async function preprocess(buffer, maxDim) {
 function buildPrompt(swatch, hasReference) {
   const finishLabel = `${swatch.brand_name} ${swatch.name}`;
   const lines = [
-    `You are doing precise photo editing — refinishing a wooden deck/porch surface with ${swatch.desc}.`,
+    `You are doing precise, restrained photo editing — applying a wood stain (${swatch.desc}) to a deck. The goal is a believable real-estate "after" photo, NOT a glamour or HDR render.`,
   ];
   if (hasReference) {
     lines.push(
-      `IMAGE 1 is the REFERENCE showing exactly how the "${finishLabel}" finish looks on wood. Study its color, tone, and how much grain shows through.`,
-      `IMAGE 2 is the TARGET: a customer's existing deck.`,
-      `TASK: refinish ONLY the wood deck surfaces (floor boards, stairs, and railings) in Image 2 to match the "${finishLabel}" finish from Image 1.`,
+      `IMAGE 1 is a REFERENCE swatch for the "${finishLabel}" finish. Use it ONLY to judge the hue / color family and how much wood grain shows through. IMPORTANT: this swatch is photographed on fresh wood under bright studio lighting, so it looks more vivid and saturated than a real installed deck — render the color noticeably MORE MUTED and natural than the swatch.`,
+      `IMAGE 2 is the TARGET: the customer's actual deck. Apply the "${finishLabel}" color to it.`,
+      `TASK: refinish ONLY the wood deck surfaces (floor boards, stairs, railings) in Image 2 to a realistic, slightly muted version of the "${finishLabel}" color.`,
     );
   } else {
     lines.push(
-      `Refinish ONLY the wood deck surfaces (floor boards, stairs, and railings) in the photo with the "${finishLabel}" finish: ${swatch.desc}.`,
+      `Refinish ONLY the wood deck surfaces (floor boards, stairs, railings) with a realistic, slightly muted "${finishLabel}" finish: ${swatch.desc}.`,
     );
   }
   lines.push(
-    `Keep the wood plank texture and board seams realistic. Preserve everything else exactly as-is: same perspective, lighting, house, siding, furniture, plants, sky, and any objects on the deck. Only the wood finish color/tone changes.`,
-    `Output a photorealistic result that looks like a freshly stained or sealed deck.`,
+    `CRITICAL — keep it natural and understated:`,
+    `Do NOT brighten the image, raise exposure, add contrast, or oversaturate. Keep the EXACT original lighting, exposure, white balance, shadows, and time of day from Image 2.`,
+    `The stain is a SEMI-TRANSPARENT finish, not paint: let the natural wood grain and board-to-board tone variation show through, and dial the color intensity down so it reads like a real applied stain (roughly 15–20% less saturated than the swatch).`,
+    `Use a natural matte / low-sheen finish — no glossy shine, no glow, no HDR look, no wet appearance.`,
+    `Preserve everything else exactly as-is: same perspective, lighting, house, siding, furniture, plants, sky, and objects on the deck. Only the wood surface color/tone changes. The result should look like an ordinary phone photo of a freshly stained deck taken in the same conditions.`,
   );
   return lines.join(" ");
 }
