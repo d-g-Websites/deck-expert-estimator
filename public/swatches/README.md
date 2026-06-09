@@ -1,28 +1,39 @@
 # Stain / seal reference photos
 
 The AI visualizer works **without** images here — it falls back to the text
-descriptions in `render.js`. But accuracy improves a lot when each finish has a
-real reference photo of a deck/board with that stain on it.
+descriptions in `render.js`. But accuracy improves a lot when each color has a
+real reference photo (a board/deck finished with that color).
 
-## Naming
-
-Finishes are organized **by brand**, and each swatch has an id of the form
-`<brand>__<color>` (double underscore). Drop a reference photo named by that id:
+## Folder layout — one folder per brand
 
 ```
-ready_seal__natural_cedar.jpg
-ready_seal__mahogany.jpg
-twp_1500__cedartone.jpg
-armstrong_clark__driftwood_gray.jpg
-solid_color__solid_gray.jpg
+public/swatches/
+  twp/                     ← TWP 1500 Series
+  rymar/                   ← Rymar
+  benjamin_moore_solid/    ← Benjamin Moore Solid
 ```
 
-Supported extensions: `.jpg`, `.jpeg`, `.png`, `.webp`. A close-up of a finished
-deck board works best. The current brand/color ids live in `render.js`
-(`STAIN_BRANDS`) — the `/api/swatches` endpoint reports `has_reference: true`
-once a matching file is present here.
+Inside each brand folder, name each photo by its **color id** (the key under
+that brand in `render.js` → `STAIN_BRANDS`). Supported extensions: `.jpg`,
+`.jpeg`, `.png`, `.webp`. A close-up of a finished board works best.
 
-## Brands / colors are placeholders
+### TWP filenames (`public/swatches/twp/`)
+```
+cedartone.jpg            (1501 Cedartone)
+redwood.jpg              (1502 Redwood)
+dark_oak.jpg             (1503 Dark Oak)
+black_walnut.jpg         (1504 Black Walnut)
+california_redwood.jpg   (1511 California Redwood)
+honeytone.jpg            (1515 Honeytone)
+rustic.jpg               (1516 Rustic)
+pecan.jpg                (1520 Pecan)
+natural.jpg              (1530 Natural)
+```
 
-The brands and colors in `render.js` are placeholders. Replace them with the
-actual brands and colors Deck Expert offers, then add the matching photos here.
+### Rymar & Benjamin Moore Solid
+Color ids aren't defined yet — send the charts/color names and they'll be added
+to `render.js`, then drop the photos in `rymar/` and `benjamin_moore_solid/`
+using the same `<color_id>.jpg` convention.
+
+`/api/swatches` reports `has_reference: true` for each color once its file is
+present here.

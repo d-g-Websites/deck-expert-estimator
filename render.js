@@ -6,14 +6,14 @@
 // reference photo exists for the chosen finish it is passed as a style
 // reference; otherwise we fall back to a descriptive text prompt.
 //
-// FINISHES ARE ORGANIZED BY BRAND. Each swatch has a stable id of the form
-// "<brand>__<color>" (e.g. "ready_seal__mahogany"). To add a reference photo,
-// drop a file at public/swatches/<brand>__<color>.jpg (see public/swatches/README).
+// FINISHES ARE ORGANIZED BY BRAND, with reference photos in per-brand folders:
+//   public/swatches/<brand>/<color>.jpg
+// e.g. public/swatches/twp/mahogany.jpg . Each swatch has a stable id of the
+// form "<brand>__<color>" used in the API and stored on estimates.
 //
-// The brands/colors below are PLACEHOLDERS — replace them with the exact brands
-// and colors Deck Expert offers. `hex` is just for the UI swatch chip shown
-// before a real reference photo is added; `desc` is what guides the AI.
-// ---------------------------------------------------------------------------
+// Replace/extend the brands and colors below with Deck Expert's real options.
+// `hex` is just for the UI chip shown before a real photo exists; `desc` guides
+// the AI. Brands with no colors yet are ignored until populated.
 
 import OpenAI, { toFile } from "openai";
 import sharp from "sharp";
@@ -25,7 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SWATCH_DIR = path.join(__dirname, "public", "swatches");
 
 export const STAIN_BRANDS = {
-  twp_1500: {
+  twp: {
     name: "TWP 1500 Series",
     colors: {
       cedartone:          { name: "1501 Cedartone",         hex: "#B0762F", desc: "TWP 1501 Cedartone — a warm golden-brown cedar-toned semi-transparent oil stain, wood grain visible" },
@@ -38,6 +38,16 @@ export const STAIN_BRANDS = {
       pecan:              { name: "1520 Pecan",             hex: "#9E6A34", desc: "TWP 1520 Pecan — a medium warm tan/pecan-brown semi-transparent oil stain" },
       natural:            { name: "1530 Natural",           hex: "#C08A40", desc: "TWP 1530 Natural — a light natural golden tone semi-transparent oil stain (similar to 1501 Cedartone)" },
     },
+  },
+  // TODO: populate from the Rymar chart (color name + hex + desc per swatch).
+  rymar: {
+    name: "Rymar",
+    colors: {},
+  },
+  // TODO: populate from the Benjamin Moore solid-stain chart.
+  benjamin_moore_solid: {
+    name: "Benjamin Moore Solid",
+    colors: {},
   },
 };
 
@@ -66,24 +76,31 @@ export function visualizerEnabled() {
 
 const REF_EXTS = [".jpg", ".jpeg", ".png", ".webp"];
 
-async function findReferencePath(swatchId) {
+// Reference photos live at public/swatches/<brand>/<color>.<ext>
+async function findReference(swatchId) {
+  const s = SWATCHES[swatchId];
+  if (!s) return null;
   for (const ext of REF_EXTS) {
-    const p = path.join(SWATCH_DIR, swatchId + ext);
-    try { await fs.access(p); return p; } catch (_) { /* next */ }
+    const rel = `${s.brand_id}/${s.color_id}${ext}`;
+    const p = path.join(SWATCH_DIR, rel);
+    try { await fs.access(p); return { path: p, url: `/swatches/${rel}` }; } catch (_) { /* next */ }
   }
   return null;
 }
 
 // Grouped swatch catalog for the UI, including whether a reference photo exists.
+// Brands with no colors yet are omitted.
 export async function listSwatches() {
   const brands = {};
   for (const [brandId, brand] of Object.entries(STAIN_BRANDS)) {
+    const colorIds = Object.keys(brand.colors);
+    if (colorIds.length === 0) continue;
     const colors = {};
-    for (const colorId of Object.keys(brand.colors)) {
+    for (const colorId of colorIds) {
       const id = `${brandId}__${colorId}`;
       const s = SWATCHES[id];
-      const refPath = await findReferencePath(id);
-      colors[id] = { id, name: s.name, hex: s.hex, reference_url: `/swatches/${id}.jpg`, has_reference: !!refPath };
+      const ref = await findReference(id);
+      colors[id] = { id, name: s.name, hex: s.hex, reference_url: ref ? ref.url : `/swatches/${brandId}/${colorId}.jpg`, has_reference: !!ref };
     }
     brands[brandId] = { name: brand.name, colors };
   }
@@ -125,12 +142,12 @@ export async function renderFinish(photoBuffer, swatchId) {
   const photoPng = await preprocess(photoBuffer, 2048);
   const photoFile = await toFile(photoPng, "deck.png", { type: "image/png" });
 
-  const refPath = await findReferencePath(swatchId);
-  const prompt = buildPrompt(swatch, !!refPath);
+  const ref = await findReference(swatchId);
+  const prompt = buildPrompt(swatch, !!ref);
 
   let image;
-  if (refPath) {
-    const refPng = await preprocess(await fs.readFile(refPath), 1536);
+  if (ref) {
+    const refPng = await preprocess(await fs.readFile(ref.path), 1536);
     const refFile = await toFile(refPng, "reference.png", { type: "image/png" });
     image = [refFile, photoFile];
   } else {
