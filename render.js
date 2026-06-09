@@ -57,9 +57,11 @@ export const STAIN_BRANDS = {
       teak:                { name: "5040 Teak",               hex: "#7A3B2A", file: "teak-5040.png",                  desc: "Rymar 5040 Teak — a deep reddish-brown teak/mahogany-toned semi-transparent penetrating wood sealer" },
     },
   },
-  // TODO: populate from the Benjamin Moore solid-stain chart.
+  // TODO: populate with the subset of Benjamin Moore solid colors Deck Expert
+  // offers (name + code + sampled hex + file). Rendered as opaque (covers grain).
   benjamin_moore_solid: {
     name: "Benjamin Moore Solid",
+    opaque: true,
     colors: {},
   },
 };
@@ -70,7 +72,7 @@ export const SWATCHES = (() => {
   for (const [brandId, brand] of Object.entries(STAIN_BRANDS)) {
     for (const [colorId, color] of Object.entries(brand.colors)) {
       const id = `${brandId}__${colorId}`;
-      out[id] = { id, brand_id: brandId, brand_name: brand.name, color_id: colorId, name: color.name, hex: color.hex || null, file: color.file || null, desc: color.desc };
+      out[id] = { id, brand_id: brandId, brand_name: brand.name, color_id: colorId, name: color.name, hex: color.hex || null, file: color.file || null, desc: color.desc, opaque: !!brand.opaque };
     }
   }
   return out;
@@ -129,26 +131,37 @@ async function preprocess(buffer, maxDim) {
 
 function buildPrompt(swatch, hasReference) {
   const finishLabel = `${swatch.brand_name} ${swatch.name}`;
+  const opaque = !!swatch.opaque;
+  const stainWord = opaque ? "solid (opaque) deck stain" : "wood stain";
   const lines = [];
   if (hasReference) {
     lines.push(
-      `You are doing precise, realistic photo editing — applying the wood stain "${finishLabel}" to a deck so the customer can see this exact color on their deck. Aim for a believable "after" photo, NOT a glamour or HDR render.`,
-      `IMAGE 1 is a REFERENCE swatch showing the ACTUAL color of "${finishLabel}". Reproduce THIS color — both its hue and its depth — clearly and recognizably on the deck. The swatch is shot under bright studio light, so render it slightly more muted and matte than the swatch, but keep the SAME hue and do NOT wash it out or shift it lighter.`,
+      `You are doing precise, realistic photo editing — applying the ${stainWord} "${finishLabel}" to a deck so the customer can see this exact color on their deck. Aim for a believable "after" photo, NOT a glamour or HDR render.`,
+      `IMAGE 1 is a REFERENCE swatch showing the ACTUAL color of "${finishLabel}". Reproduce THIS color — both its hue and its depth — clearly and recognizably on the deck. Render it slightly more muted and matte than the swatch, but keep the SAME hue and do NOT wash it out or shift it lighter.`,
       `IMAGE 2 is the TARGET: the customer's actual deck. Apply the "${finishLabel}" color to it.`,
       `TASK: refinish ONLY the wood deck surfaces (floor boards, stairs, railings, benches) in Image 2 with the "${finishLabel}" color.`,
     );
   } else {
     lines.push(
-      `You are doing precise, realistic photo editing — applying a wood stain to a deck. Aim for a believable "after" photo, NOT a glamour or HDR render.`,
+      `You are doing precise, realistic photo editing — applying a ${stainWord} to a deck. Aim for a believable "after" photo, NOT a glamour or HDR render.`,
       `Refinish ONLY the wood deck surfaces (floor boards, stairs, railings, benches) with the "${finishLabel}" color: ${swatch.desc}. Make the color clearly recognizable.`,
     );
   }
+  if (opaque) {
+    lines.push(
+      `This is a SOLID, OPAQUE stain: cover the wood in an even, uniform solid color like an opaque deck paint, hiding most of the grain. Apply it consistently across all boards as one color.`,
+    );
+  } else {
+    lines.push(
+      `Make it look like a real stain job: apply the color as a SEMI-TRANSPARENT stain so the wood grain and board-to-board variation still show through — not opaque paint.`,
+    );
+  }
   lines.push(
-    `Make it look like a real stain job: apply the color as a SEMI-TRANSPARENT stain so the wood grain and board-to-board variation still show through — not opaque paint, and not glossy. Use a natural matte / low-sheen finish: no shine, glow, wet look, or HDR.`,
-    `PRESERVE THE REAL WOOD: keep the existing boards' actual texture and character — grain, knots, saw and brush marks, surface checking/cracks, nail holes, dirt, and natural weathering and age. Keep each board's individual color and wear variation. The boards must look like genuine, slightly weathered real wood that was stained — NOT smooth plastic, CGI, 3D-rendered, or clean uniform toy/Lego-like planks.`,
-    `Do NOT enhance, smooth, sharpen, denoise, retouch, or beautify the surfaces in any way. Retain the original photo's grit, texture, and imperfections.`,
+    `Use a natural matte / low-sheen finish: no shine, glow, wet look, or HDR.`,
+    `PRESERVE THE REAL DECK: keep the boards' real surface texture and relief — board seams, edges, screw/nail heads, slight cupping and wear, brush direction, and minor imperfections${opaque ? "" : ", plus grain, knots, checking/cracks, dirt, and natural weathering"}. It must look like a real ${opaque ? "solid-stained" : "weathered, stained"} wood deck photographed with a phone — NOT smooth plastic, CGI, 3D-rendered, or clean uniform toy/Lego-like planks.`,
+    `Do NOT enhance, smooth, sharpen, denoise, retouch, or beautify the surfaces. Retain the original photo's grit and imperfections.`,
     `Do NOT brighten the overall photo, boost exposure or contrast, or change the scene. Keep the exact original lighting, exposure, white balance, shadows, sky, house, siding, plants, furniture, and perspective. ONLY the wood color changes.`,
-    `The applied color must be clearly visible and accurate to the swatch — just slightly muted and matte. Do NOT leave the deck looking faded, washed-out, or like bare/untinted wood.`,
+    `The applied color must be clearly visible and accurate to the swatch. Do NOT leave the deck looking faded, washed-out, or like bare/untinted wood.`,
   );
   return lines.join(" ");
 }
