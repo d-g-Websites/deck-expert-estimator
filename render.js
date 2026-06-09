@@ -39,10 +39,23 @@ export const STAIN_BRANDS = {
       natural:            { name: "1530 Natural",           hex: "#C08A40", file: "1530-natural.png",            desc: "TWP 1530 Natural — a light natural golden tone semi-transparent oil stain (similar to 1501 Cedartone)" },
     },
   },
-  // TODO: populate from the Rymar chart (color name + hex + desc per swatch).
   rymar: {
     name: "Rymar",
-    colors: {},
+    colors: {
+      honey_brown:         { name: "7600 Honey Brown",         hex: "#B97B3A", file: "Honey-Brown-7600.png",            desc: "Rymar 7600 Honey Brown — a warm honey-brown semi-transparent penetrating wood sealer" },
+      clear:               { name: "7610 Clear",               hex: "#CBA063", file: "Clear-7610.png",                 desc: "Rymar 7610 Clear — a clear natural penetrating sealer that keeps the raw wood tone with little added color" },
+      kodiak:              { name: "7615 Kodiak",              hex: "#5A3B24", file: "Kodiak-7615-e1710220139320.jpg", desc: "Rymar 7615 Kodiak — a deep dark-brown semi-transparent penetrating wood sealer" },
+      nectar:              { name: "7620 Nectar",              hex: "#C68A3E", file: "Nectar-7620.png",                desc: "Rymar 7620 Nectar — a golden amber semi-transparent penetrating wood sealer" },
+      natural_cedar_honey: { name: "7625 Natural Cedar Honey", hex: "#BC7E3C", file: "Natural-Cedar-Honey-7625.png",   desc: "Rymar 7625 Natural Cedar Honey — a warm cedar-honey semi-transparent penetrating wood sealer" },
+      sienna:              { name: "7630 Sienna",             hex: "#9A4E2A", file: "Sienna-7630.png",                desc: "Rymar 7630 Sienna — a reddish sienna-brown semi-transparent penetrating wood sealer" },
+      natural_cedartone:   { name: "7635 Natural Cedartone",   hex: "#B0762F", file: "Natural-Cedartone-7635.png",     desc: "Rymar 7635 Natural Cedartone — a warm golden cedar-tone semi-transparent penetrating wood sealer" },
+      ember:               { name: "7640 Ember",              hex: "#8A4324", file: "Ember-7640.png",                 desc: "Rymar 7640 Ember — a warm reddish ember-brown semi-transparent penetrating wood sealer" },
+      sequoia:             { name: "7645 Sequoia",            hex: "#7E3A24", file: "Sequioa-7645.png",               desc: "Rymar 7645 Sequoia — a deep reddish redwood-brown semi-transparent penetrating wood sealer" },
+      shadow:              { name: "7650 Shadow",             hex: "#4E4034", file: "Shadow-7650.png",                desc: "Rymar 7650 Shadow — a dark grayish-brown semi-transparent penetrating wood sealer" },
+      pine_cone:           { name: "7655 Pine Cone",          hex: "#7C5230", file: "Pine-Cone7655.png",              desc: "Rymar 7655 Pine Cone — a medium warm brown semi-transparent penetrating wood sealer" },
+      hickory_bark:        { name: "7660 Hickory Bark",       hex: "#5C4126", file: "Hickory-Bark-7660.png",          desc: "Rymar 7660 Hickory Bark — a dark warm hickory-brown semi-transparent penetrating wood sealer" },
+      teak:                { name: "5040 Teak",               hex: "#A97C45", file: "teak-5040.png",                  desc: "Rymar 5040 Teak — a warm golden teak-brown semi-transparent penetrating wood sealer" },
+    },
   },
   // TODO: populate from the Benjamin Moore solid-stain chart.
   benjamin_moore_solid: {
