@@ -50,6 +50,9 @@
     <div id="renderError" class="error-inline"></div>
     <div id="renderLabel" class="render-label" style="display:none">AI preview:</div>
     <img id="renderPreview" class="photo-preview" style="display:none">
+    <div id="renderActions" class="render-actions" style="display:none">
+      <a id="downloadBtn" class="btn secondary" download>⬇ Download image</a>
+    </div>
   </div>
 </main>
 
@@ -62,6 +65,10 @@ const renderBtn = document.getElementById('renderBtn');
 const renderPreview = document.getElementById('renderPreview');
 const renderLabel = document.getElementById('renderLabel');
 const renderError = document.getElementById('renderError');
+const renderActions = document.getElementById('renderActions');
+const downloadBtn = document.getElementById('downloadBtn');
+
+function slug(s) { return (s || 'deck').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
 
 let photoFile = null;
 let BRANDS = {};
@@ -132,6 +139,7 @@ renderBtn.addEventListener('click', async () => {
   renderBtn.disabled = true;
   renderBtn.textContent = 'Rendering… 20–40s';
   renderError.style.display = 'none';
+  renderActions.style.display = 'none';
   try {
     const fd = new FormData();
     fd.append('photo', photoFile);
@@ -139,10 +147,14 @@ renderBtn.addEventListener('click', async () => {
     const res = await fetch('/api/render', { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Render failed');
-    renderPreview.src = 'data:image/png;base64,' + data.image_base64;
+    const dataUrl = 'data:image/png;base64,' + data.image_base64;
+    renderPreview.src = dataUrl;
     renderPreview.style.display = 'block';
     renderLabel.style.display = 'block';
     renderLabel.textContent = 'AI preview (' + selectedName + '):';
+    downloadBtn.href = dataUrl;
+    downloadBtn.download = 'deck-' + slug(selectedName) + '.png';
+    renderActions.style.display = 'flex';
   } catch (err) {
     renderError.textContent = err.message;
     renderError.style.display = 'block';
