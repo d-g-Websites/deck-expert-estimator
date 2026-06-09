@@ -82,7 +82,6 @@
       <div class="grid-2">
         <div class="field"><label for="wood_type">Wood type</label><select id="wood_type"></select></div>
         <div class="field"><label for="deck_location">Deck location</label><select id="deck_location"></select></div>
-        <div class="field"><label for="deck_height">Deck height</label><select id="deck_height"></select></div>
       </div>
 
       <div class="toggle">
@@ -183,13 +182,13 @@ const errorBanner = document.getElementById('errorBanner');
 const saveBtn = document.getElementById('saveBtn');
 const $ = (id) => document.getElementById(id);
 const els = {
-  wood: $('wood_type'), location: $('deck_location'), height: $('deck_height'), prior: $('prior_finish'),
+  wood: $('wood_type'), location: $('deck_location'), prior: $('prior_finish'),
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
   levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
-let CLEANING = null, HEIGHTS = null, PGSIZES = null;
+let CLEANING = null, PGSIZES = null;
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
@@ -225,10 +224,9 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  CLEANING = data.cleaning_pricing; HEIGHTS = data.deck_heights; PGSIZES = data.pergola_gazebo_sizes;
+  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
-  fillSelect(els.height, data.deck_heights);
   fillSelect(els.prior, data.prior_finishes, 'Select…');
   fillPergolaSizes(data.pergola_gazebo_sizes);
   buildStructures(data.structures);
@@ -312,7 +310,8 @@ function computeCleaning() {
   const table = hasRailing.checked ? CLEANING.base_with_railing : CLEANING.base_no_railing;
   let base = table[tier];
   if (tier === 3 && sqft > 600) base += Math.ceil((sqft - 600) / 200) * CLEANING.over_600_extra_per_200;
-  const stories = (HEIGHTS[els.height.value] || { stories: 1 }).stories;
+  const lv = hasMultilevel.checked ? (num(els.levels) || 2) : 0;
+  const stories = lv >= 2 ? Math.min(3, lv) : 1;
   const mult = (CLEANING.story_multiplier[stories] || CLEANING.story_multiplier[1])[tier];
   let deckWash = base * mult;
   if (lightClean.checked) deckWash *= (1 - CLEANING.light_clean_discount);
@@ -344,7 +343,7 @@ function updateTotal() {
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.discount].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.discount, els.levels].forEach(el => el.addEventListener('input', updateTotal));
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updatePergolaVisibility(); updateTotal();
@@ -447,9 +446,8 @@ form.addEventListener('submit', async (e) => {
   fd.append('customer_address', document.getElementById('customer_address').value.trim());
   fd.append('wood_type', els.wood.value);
   fd.append('deck_location', els.location.value);
-  fd.append('deck_height', els.height.value);
   fd.append('prior_finish', els.prior.value);
-  fd.append('multilevel_levels', hasMultilevel.checked ? String(num(els.levels)) : '0');
+  fd.append('multilevel_levels', hasMultilevel.checked ? String(num(els.levels) || 2) : '0');
   fd.append('surface_sqft', String(num(els.sqft)));
   fd.append('steps_included', stepsIncluded.checked ? '1' : '');
   fd.append('has_railing', hasRailing.checked ? '1' : '');

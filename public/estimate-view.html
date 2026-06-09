@@ -70,7 +70,6 @@ function render(e) {
   const project = card(cap(e.structure_type) + ' project',
     row('Wood', e.labels.wood || pr.wood_type || '—') +
     row('Deck location', e.labels.deck_location || '—') +
-    row('Deck height', e.labels.deck_height || '—') +
     row('Multi-level', pr.multilevel_levels > 0 ? ('Yes — ' + pr.multilevel_levels + ' levels') : 'No') +
     row('Square footage', (pr.surface_sqft || 0) + ' sq ft' + (pr.steps_included ? ' (incl. steps)' : '')) +
     row('Railing', pr.has_railing ? (pr.railing_lf > 0 ? pr.railing_lf + ' lf' : 'Yes') : 'No') +

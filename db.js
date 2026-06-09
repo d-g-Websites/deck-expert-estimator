@@ -31,8 +31,7 @@ db.exec(`
     -- Deck/structure project details (nullable so other structures can extend later)
     wood_type TEXT,          -- pressure_treated | cedar | hardwood | composite
     deck_location TEXT,      -- above_ground | rooftop
-    deck_height TEXT,        -- ground | two_story | three_story
-    multilevel_levels INTEGER NOT NULL DEFAULT 0,  -- 0 = single level
+    multilevel_levels INTEGER NOT NULL DEFAULT 0,  -- 0 = single level; drives cleaning story multiplier
     surface_sqft REAL,
     steps_included INTEGER NOT NULL DEFAULT 0,      -- sq ft includes the stairs?
     has_railing INTEGER NOT NULL DEFAULT 0,
@@ -89,7 +88,6 @@ db.exec(`
 const MIGRATIONS = {
   source_hcp_estimate_id: "TEXT",
   deck_location: "TEXT",
-  deck_height: "TEXT",
   multilevel_levels: "INTEGER NOT NULL DEFAULT 0",
   steps_included: "INTEGER NOT NULL DEFAULT 0",
   has_railing: "INTEGER NOT NULL DEFAULT 0",

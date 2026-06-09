@@ -27,13 +27,6 @@ export const DECK_LOCATIONS = {
   rooftop:      { label: "Rooftop" },
 };
 
-// Deck height (stories tall) — drives the cleaning story multiplier.
-export const DECK_HEIGHTS = {
-  ground:      { label: "Ground / 1st floor", stories: 1 },
-  two_story:   { label: "2 stories",          stories: 2 },
-  three_story: { label: "3 stories",          stories: 3 },
-};
-
 export const PRIOR_FINISHES = {
   bare_wood:            { label: "Bare Wood" },
   solid_stain_acrylic:  { label: "Solid Stain (Acrylic)" },
@@ -69,7 +62,8 @@ export const CLEANING_PRICING = {
   base_with_railing: [450, 600, 700, 700],
   // Above 600 sq ft: add this per each extra 200 sq ft beyond 600.
   over_600_extra_per_200: 50,
-  // Story multiplier by stories -> per sq ft tier.
+  // Story multiplier by stories -> per sq ft tier. Stories come from the
+  // Project "Multi-level deck" line (levels): none/1 = 1 story, 2 = 2-story, 3+ = 3-story.
   story_multiplier: {
     1: [1.0, 1.0, 1.0, 1.0],
     2: [1.5, 1.5, 1.3, 1.2],
@@ -100,7 +94,8 @@ export function computeCleaning(input) {
     base += extraBlocks * CLEANING_PRICING.over_600_extra_per_200;
   }
 
-  const stories = (DECK_HEIGHTS[input.deck_height] || DECK_HEIGHTS.ground).stories;
+  const levels = Number(input.multilevel_levels) || 0;
+  const stories = levels >= 2 ? Math.min(3, levels) : 1;
   const mult = (CLEANING_PRICING.story_multiplier[stories] || CLEANING_PRICING.story_multiplier[1])[tier];
 
   let deckWash = base * mult;

@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { db } from "./db.js";
 import {
-  STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, DECK_HEIGHTS, PRIOR_FINISHES, DECK_STRUCTURES,
+  STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, PRIOR_FINISHES, DECK_STRUCTURES,
   PERGOLA_GAZEBO_SIZES, CLEANING_PRICING, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
@@ -85,7 +85,6 @@ app.get("/api/pricing/deck", requireAuth, (req, res) => {
   res.json({
     wood_types: WOOD_TYPES,
     deck_locations: DECK_LOCATIONS,
-    deck_heights: DECK_HEIGHTS,
     prior_finishes: PRIOR_FINISHES,
     structures: DECK_STRUCTURES,
     pergola_gazebo_sizes: PERGOLA_GAZEBO_SIZES,
@@ -174,7 +173,6 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
       return {
         wood_type: row.wood_type,
         deck_location: row.deck_location,
-        deck_height: row.deck_height,
         multilevel_levels: row.multilevel_levels,
         surface_sqft: row.surface_sqft,
         steps_included: !!row.steps_included,
@@ -193,7 +191,6 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
     labels: {
       wood: (WOOD_TYPES[row.wood_type] || {}).label,
       deck_location: (DECK_LOCATIONS[row.deck_location] || {}).label,
-      deck_height: (DECK_HEIGHTS[row.deck_height] || {}).label,
       prior_finish: (PRIOR_FINISHES[row.prior_finish] || {}).label,
       pergola_gazebo_size: (PERGOLA_GAZEBO_SIZES[row.pergola_gazebo_size] || {}).label,
       structures: (() => {
@@ -245,7 +242,6 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
 
     const wood_type = (b.wood_type || "").trim();
     const deck_location = (b.deck_location || "").trim() || null;
-    const deck_height = (b.deck_height || "").trim() || null;
     const prior_finish = (b.prior_finish || "").trim() || null;
     const multilevel_levels = b.multilevel_levels ? parseInt(b.multilevel_levels, 10) : 0;
     const steps_included = b.steps_included ? 1 : 0;
@@ -272,7 +268,6 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     if (!customer_phone && !customer_email) return res.status(400).json({ error: "Phone or email required" });
     if (!WOOD_TYPES[wood_type]) return res.status(400).json({ error: "Invalid wood type" });
     if (deck_location && !DECK_LOCATIONS[deck_location]) return res.status(400).json({ error: "Invalid deck location" });
-    if (deck_height && !DECK_HEIGHTS[deck_height]) return res.status(400).json({ error: "Invalid deck height" });
     if (prior_finish && !PRIOR_FINISHES[prior_finish]) return res.status(400).json({ error: "Invalid prior finish" });
     if (pergola_gazebo_size && !PERGOLA_GAZEBO_SIZES[pergola_gazebo_size]) return res.status(400).json({ error: "Invalid pergola/gazebo size" });
     if (!Number.isFinite(surface_sqft) || surface_sqft <= 0) return res.status(400).json({ error: "Invalid square footage" });
@@ -291,7 +286,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     }
 
     const breakdown = computeDeckEstimate({
-      cleaning_enabled, surface_sqft, has_railing, deck_height,
+      cleaning_enabled, surface_sqft, has_railing, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
       discount, extra_items: cleanExtras,
     });
@@ -299,15 +294,15 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const result = db.prepare(`
       INSERT INTO estimates (
         customer_name, customer_phone, customer_email, customer_address,
-        structure_type, wood_type, deck_location, deck_height, multilevel_levels,
+        structure_type, wood_type, deck_location, multilevel_levels,
         surface_sqft, steps_included, has_railing, railing_lf, stairs_count,
         structures, structures_other, prior_finish,
         cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
         extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
-      structure_type, wood_type, deck_location, deck_height, multilevel_levels,
+      structure_type, wood_type, deck_location, multilevel_levels,
       surface_sqft, steps_included, has_railing, railing_lf, stairs_count,
       JSON.stringify(structures), structures_other, prior_finish,
       cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
