@@ -25,46 +25,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SWATCH_DIR = path.join(__dirname, "public", "swatches");
 
 export const STAIN_BRANDS = {
-  clear: {
-    name: "Clear & Sealers",
-    colors: {
-      natural_clear: { name: "Natural / Clear", hex: "#C8A56B", desc: "a clear matte sealer that keeps the natural raw wood tone, with a soft non-glossy finish" },
-    },
-  },
-  ready_seal: {
-    name: "Ready Seal",
-    colors: {
-      natural_cedar: { name: "Natural Cedar", hex: "#B07A43", desc: "a warm golden cedar-toned translucent oil stain that lets the wood grain show through" },
-      light_oak:     { name: "Light Oak",     hex: "#C79A5B", desc: "a light honey-oak translucent oil stain, grain clearly visible" },
-      pecan:         { name: "Pecan",         hex: "#8B5A2B", desc: "a medium warm pecan-brown translucent oil stain" },
-      mahogany:      { name: "Mahogany",      hex: "#6E3B2A", desc: "a rich reddish-brown mahogany translucent oil stain" },
-      dark_walnut:   { name: "Dark Walnut",   hex: "#4B2E1E", desc: "a deep dark-brown walnut translucent oil stain" },
-    },
-  },
   twp_1500: {
-    name: "TWP 1500",
+    name: "TWP 1500 Series",
     colors: {
-      cedartone: { name: "Cedartone", hex: "#A86B3C", desc: "a warm cedar-toned semi-transparent stain" },
-      honeytone: { name: "Honeytone", hex: "#C68E4E", desc: "a golden honey-toned semi-transparent stain" },
-      dark_oak:  { name: "Dark Oak",  hex: "#5C3A22", desc: "a deep dark-oak brown semi-transparent stain" },
-      rustic:    { name: "Rustic",    hex: "#7A4326", desc: "a reddish rustic-brown semi-transparent stain" },
-    },
-  },
-  armstrong_clark: {
-    name: "Armstrong-Clark",
-    colors: {
-      cedar:         { name: "Cedar",         hex: "#A9703F", desc: "a warm cedar semi-transparent stain" },
-      mahogany:      { name: "Mahogany",      hex: "#6B362A", desc: "a reddish-brown mahogany semi-transparent stain" },
-      black_walnut:  { name: "Black Walnut",  hex: "#3E2A1E", desc: "a dark espresso black-walnut semi-transparent stain" },
-      driftwood_gray:{ name: "Driftwood Gray",hex: "#8A857C", desc: "a weathered driftwood-gray semi-transparent stain" },
-    },
-  },
-  solid_color: {
-    name: "Solid Color",
-    colors: {
-      solid_cedar: { name: "Solid Cedar", hex: "#9C6038", desc: "a solid opaque cedar-brown deck stain that fully hides the grain like paint" },
-      solid_gray:  { name: "Solid Gray",  hex: "#6E6E6E", desc: "a solid opaque slate-gray deck stain that fully hides the grain like paint" },
-      solid_white: { name: "Solid White", hex: "#E8E2D8", desc: "a solid opaque warm-white deck stain that fully hides the grain like paint" },
+      cedartone:          { name: "1501 Cedartone",         hex: "#B0762F", desc: "TWP 1501 Cedartone — a warm golden-brown cedar-toned semi-transparent oil stain, wood grain visible" },
+      redwood:            { name: "1502 Redwood",           hex: "#9E4521", desc: "TWP 1502 Redwood — a reddish-orange redwood-toned semi-transparent oil stain, grain visible" },
+      dark_oak:           { name: "1503 Dark Oak",          hex: "#6F5638", desc: "TWP 1503 Dark Oak — a muted grayish-brown dark-oak semi-transparent oil stain" },
+      black_walnut:       { name: "1504 Black Walnut",      hex: "#3D2B1B", desc: "TWP 1504 Black Walnut — a dark espresso-brown semi-transparent oil stain, grain still visible" },
+      california_redwood: { name: "1511 California Redwood", hex: "#AE5E27", desc: "TWP 1511 California Redwood — a rich warm reddish-brown redwood semi-transparent oil stain" },
+      honeytone:          { name: "1515 Honeytone",         hex: "#C68B3C", desc: "TWP 1515 Honeytone — a light golden honey-toned semi-transparent oil stain" },
+      rustic:             { name: "1516 Rustic",            hex: "#8E4E2B", desc: "TWP 1516 Rustic — a warm reddish rustic-brown semi-transparent oil stain" },
+      pecan:              { name: "1520 Pecan",             hex: "#9E6A34", desc: "TWP 1520 Pecan — a medium warm tan/pecan-brown semi-transparent oil stain" },
+      natural:            { name: "1530 Natural",           hex: "#C08A40", desc: "TWP 1530 Natural — a light natural golden tone semi-transparent oil stain (similar to 1501 Cedartone)" },
     },
   },
 };
