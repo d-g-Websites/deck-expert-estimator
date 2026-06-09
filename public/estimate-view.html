@@ -70,9 +70,10 @@ function render(e) {
   const project = card(cap(e.structure_type) + ' project',
     row('Wood', e.labels.wood || pr.wood_type || '—') +
     row('Deck location', e.labels.deck_location || '—') +
+    row('Deck height', e.labels.deck_height || '—') +
     row('Multi-level', pr.multilevel_levels > 0 ? ('Yes — ' + pr.multilevel_levels + ' levels') : 'No') +
-    row('Square footage', (pr.surface_sqft || 0) + ' sq ft' + (pr.steps_included ? ' (incl. steps)' : '') + (b.rate_per_sqft != null ? ' @ $' + b.rate_per_sqft.toFixed(2) + '/sq ft' : '')) +
-    row('Railing', (pr.railing_lf > 0) ? (pr.railing_lf + ' lf') : 'No') +
+    row('Square footage', (pr.surface_sqft || 0) + ' sq ft' + (pr.steps_included ? ' (incl. steps)' : '')) +
+    row('Railing', pr.has_railing ? (pr.railing_lf > 0 ? pr.railing_lf + ' lf' : 'Yes') : 'No') +
     row('Stairs', (pr.stairs_count > 0) ? (pr.stairs_count + ' steps') : 'No') +
     row('Structures', structuresStr) +
     row('Prior finish', e.labels.prior_finish || '—'));
@@ -82,10 +83,12 @@ function render(e) {
     extras = card('Extra services', b.extras_list.map(x => row(x.description, fmt(x.price))).join(''));
   }
 
+  const cl = b.cleaning || {};
+  const clSurcharge = cl.chicago_surcharge ? ((cl.total || 0) - ((cl.deck_wash || 0) + (cl.pergola_gazebo || 0))) : 0;
   const totals = '<section class="card total-card"><h2 style="color:var(--cream)">Total</h2>' +
-    row('Surface', fmt(b.surface || 0)) +
-    (b.railing > 0 ? row('Railing', fmt(b.railing)) : '') +
-    (b.stairs > 0 ? row('Stairs', fmt(b.stairs)) : '') +
+    (cl.enabled ? row('Cleaning (deck wash)' + (cl.light_clean ? ' — light clean' : ''), fmt(cl.deck_wash || 0)) : '') +
+    (cl.pergola_gazebo > 0 ? row('Pergola/gazebo cleaning', fmt(cl.pergola_gazebo)) : '') +
+    (clSurcharge > 0 ? row('Chicago / Michigan (+10%)', fmt(clSurcharge)) : '') +
     (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +
     '<div class="row subtotal"><span class="label">Subtotal</span><span class="value">' + fmt(b.subtotal || 0) + '</span></div>' +
     (b.discount > 0 ? row('Discount', '-' + fmt(b.discount)) : '') +

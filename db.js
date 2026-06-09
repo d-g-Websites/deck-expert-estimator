@@ -31,14 +31,22 @@ db.exec(`
     -- Deck/structure project details (nullable so other structures can extend later)
     wood_type TEXT,          -- pressure_treated | cedar | hardwood | composite
     deck_location TEXT,      -- above_ground | rooftop
+    deck_height TEXT,        -- ground | two_story | three_story
     multilevel_levels INTEGER NOT NULL DEFAULT 0,  -- 0 = single level
     surface_sqft REAL,
     steps_included INTEGER NOT NULL DEFAULT 0,      -- sq ft includes the stairs?
+    has_railing INTEGER NOT NULL DEFAULT 0,
     railing_lf REAL DEFAULT 0,
     stairs_count INTEGER DEFAULT 0,
     structures TEXT NOT NULL DEFAULT '[]',          -- JSON array of structure ids
     structures_other TEXT,                          -- free text when "other" selected
     prior_finish TEXT,       -- bare_wood | solid_stain_acrylic | oil_based_color_seal | clear_seal
+
+    -- Cleaning (power washing) inputs
+    cleaning_enabled INTEGER NOT NULL DEFAULT 1,
+    chicago_surcharge INTEGER NOT NULL DEFAULT 0,
+    light_clean INTEGER NOT NULL DEFAULT 0,
+    pergola_gazebo_size TEXT,
 
     -- Legacy columns (no longer collected; kept for older rows)
     service_type TEXT,
@@ -81,11 +89,17 @@ db.exec(`
 const MIGRATIONS = {
   source_hcp_estimate_id: "TEXT",
   deck_location: "TEXT",
+  deck_height: "TEXT",
   multilevel_levels: "INTEGER NOT NULL DEFAULT 0",
   steps_included: "INTEGER NOT NULL DEFAULT 0",
+  has_railing: "INTEGER NOT NULL DEFAULT 0",
   structures: "TEXT NOT NULL DEFAULT '[]'",
   structures_other: "TEXT",
   prior_finish: "TEXT",
+  cleaning_enabled: "INTEGER NOT NULL DEFAULT 1",
+  chicago_surcharge: "INTEGER NOT NULL DEFAULT 0",
+  light_clean: "INTEGER NOT NULL DEFAULT 0",
+  pergola_gazebo_size: "TEXT",
 };
 const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
 for (const [name, ddl] of Object.entries(MIGRATIONS)) {

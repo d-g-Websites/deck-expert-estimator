@@ -82,6 +82,7 @@
       <div class="grid-2">
         <div class="field"><label for="wood_type">Wood type</label><select id="wood_type"></select></div>
         <div class="field"><label for="deck_location">Deck location</label><select id="deck_location"></select></div>
+        <div class="field"><label for="deck_height">Deck height</label><select id="deck_height"></select></div>
       </div>
 
       <div class="toggle">
@@ -128,6 +129,20 @@
     </section>
 
     <section class="card">
+      <h2>Cleaning &amp; Preparation</h2>
+      <label class="check-line" style="margin-bottom:0.25rem"><input type="checkbox" id="cleaning_enabled" checked> Power wash &amp; clean the deck</label>
+      <div id="cleaningOpts">
+        <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="chicago_surcharge"> Chicago or town by Michigan (+10%)</label></div>
+        <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="light_clean"> New deck — light clean only (−30%)</label></div>
+        <div class="field" id="pergolaGazeboWrap" style="display:none;margin-top:0.85rem">
+          <label for="pergola_gazebo_size">Pergola / gazebo exterior cleaning</label>
+          <select id="pergola_gazebo_size"></select>
+        </div>
+        <div class="hint" style="margin-top:0.6rem">Uses the square footage &amp; railing from Project. Square footage is horizontal deck surface only.</div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Extra services</h2>
       <div id="extraItems"></div>
       <button type="button" id="addExtra" class="btn secondary">+ Add line item</button>
@@ -140,9 +155,9 @@
 
     <section class="card total-card">
       <h2>Total</h2>
-      <div class="total-row"><span id="surfaceLabel">Surface</span><span id="surfaceTotal">$0.00</span></div>
-      <div class="total-row" id="railingRow" style="display:none"><span>Railing</span><span id="railingTotal">$0.00</span></div>
-      <div class="total-row" id="stairsRow" style="display:none"><span id="stairsLabel">Stairs</span><span id="stairsTotal">$0.00</span></div>
+      <div class="total-row" id="cleaningRow"><span id="cleaningLabel">Cleaning</span><span id="cleaningTotal">$0.00</span></div>
+      <div class="total-row" id="pergolaRow" style="display:none"><span>Pergola/gazebo cleaning</span><span id="pergolaTotal">$0.00</span></div>
+      <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
       <div class="total-row subtotal"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
       <div class="total-row" id="discountRow" style="display:none"><span>Discount</span><span id="discountAmount">-$0.00</span></div>
@@ -168,12 +183,13 @@ const errorBanner = document.getElementById('errorBanner');
 const saveBtn = document.getElementById('saveBtn');
 const $ = (id) => document.getElementById(id);
 const els = {
-  wood: $('wood_type'), location: $('deck_location'), prior: $('prior_finish'),
+  wood: $('wood_type'), location: $('deck_location'), height: $('deck_height'), prior: $('prior_finish'),
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
-  levels: $('multilevel_levels'), discount: $('discount'),
+  levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
-let PRICING = null;
+const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
+let CLEANING = null, HEIGHTS = null, PGSIZES = null;
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
@@ -209,13 +225,24 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  PRICING = data.pricing;
+  CLEANING = data.cleaning_pricing; HEIGHTS = data.deck_heights; PGSIZES = data.pergola_gazebo_sizes;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
+  fillSelect(els.height, data.deck_heights);
   fillSelect(els.prior, data.prior_finishes, 'Select…');
+  fillPergolaSizes(data.pergola_gazebo_sizes);
   buildStructures(data.structures);
   updateTotal();
 });
+function fillPergolaSizes(obj) {
+  els.pergola.innerHTML = '';
+  for (const [id, info] of Object.entries(obj)) {
+    const o = document.createElement('option'); o.value = id;
+    o.textContent = info.price ? (info.label + ' (+$' + info.price + ')') : info.label;
+    els.pergola.appendChild(o);
+  }
+  els.pergola.addEventListener('change', updateTotal);
+}
 fetch('/api/swatches').then(r => r.json()).then(data => {
   for (const [bid, brand] of Object.entries(data.brands || {})) {
     const og = document.createElement('optgroup'); og.label = brand.name;
@@ -245,14 +272,22 @@ function buildStructures(obj) {
     const lbl = document.createElement('label');
     lbl.innerHTML = '<input type="checkbox" value="' + id + '"> ' + info.label;
     const cb = lbl.querySelector('input');
-    if (id === 'other') cb.addEventListener('change', () => {
-      document.getElementById('structuresOtherWrap').style.display = cb.checked ? 'block' : 'none';
+    cb.addEventListener('change', () => {
+      if (id === 'other') document.getElementById('structuresOtherWrap').style.display = cb.checked ? 'block' : 'none';
+      updatePergolaVisibility();
+      updateTotal();
     });
     grid.appendChild(lbl);
   }
 }
 function getStructures() {
   return Array.from(document.querySelectorAll('#structuresGrid input:checked')).map(c => c.value);
+}
+function structuresHas(id) { return !!document.querySelector('#structuresGrid input[value="' + id + '"]:checked'); }
+function updatePergolaVisibility() {
+  const show = (structuresHas('pergola') || structuresHas('gazebo')) && cleaningEnabled.checked;
+  document.getElementById('pergolaGazeboWrap').style.display = show ? 'block' : 'none';
+  if (!show && els.pergola) els.pergola.value = 'none';
 }
 
 // conditional yes/no rows
@@ -267,42 +302,41 @@ wireToggle(hasMultilevel, 'multilevelWrap', els.levels);
 wireToggle(hasRailing, 'railingWrap', els.railing);
 wireToggle(hasStairs, 'stairsWrap', els.stairs);
 
-function woodRate() {
-  if (!PRICING) return null;
-  const r = PRICING.surface_sqft[els.wood.value];
-  return (r === null || r === undefined) ? null : r;
-}
 function num(el) { const v = parseFloat(el.value); return Number.isFinite(v) ? v : 0; }
 function fmt(v) { return '$' + v.toFixed(2); }
 
-function updateTotal() {
-  if (!PRICING) return;
-  const rate = woodRate();
+function computeCleaning() {
+  if (!CLEANING || !cleaningEnabled.checked) return { enabled: false, deck_wash: 0, pergola: 0, surcharge: 0, total: 0 };
   const sqft = num(els.sqft);
-  const railingLf = hasRailing.checked ? num(els.railing) : 0;
-  const stairs = hasStairs.checked ? num(els.stairs) : 0;
-  const discount = num(els.discount);
-  const surface = rate == null ? 0 : rate * sqft;
-  const railing = PRICING.railing_lf * railingLf;
-  const stairsTotal = PRICING.stairs_each * stairs;
+  const tier = sqft < 200 ? 0 : sqft <= 400 ? 1 : sqft <= 600 ? 2 : 3;
+  const table = hasRailing.checked ? CLEANING.base_with_railing : CLEANING.base_no_railing;
+  let base = table[tier];
+  if (tier === 3 && sqft > 600) base += Math.ceil((sqft - 600) / 200) * CLEANING.over_600_extra_per_200;
+  const stories = (HEIGHTS[els.height.value] || { stories: 1 }).stories;
+  const mult = (CLEANING.story_multiplier[stories] || CLEANING.story_multiplier[1])[tier];
+  let deckWash = base * mult;
+  if (lightClean.checked) deckWash *= (1 - CLEANING.light_clean_discount);
+  const pergola = (PGSIZES[els.pergola.value] || { price: 0 }).price;
+  let total = deckWash + pergola, surcharge = 0;
+  if (chicago.checked) { surcharge = total * CLEANING.chicago_surcharge; total += surcharge; }
+  return { enabled: true, deck_wash: deckWash, pergola, surcharge, total };
+}
+
+function updateTotal() {
+  if (!CLEANING) return;
+  const c = computeCleaning();
   const extras = getExtras().reduce((s, x) => s + x.price, 0);
-  const subtotal = surface + railing + stairsTotal + extras;
+  const discount = num(els.discount);
+  const subtotal = c.total + extras;
   const grand = Math.max(0, subtotal - discount);
 
-  const notice = document.getElementById('rateNotice');
-  if (rate == null) {
-    notice.style.display = 'block';
-    notice.textContent = 'No $/sq ft rate set for this wood type — surface will price at $0. Set it in pricing.js.';
-  } else { notice.style.display = 'none'; }
-
-  document.getElementById('surfaceLabel').textContent = rate == null ? 'Surface (no rate set)'
-    : 'Surface ($' + rate.toFixed(2) + '/sq ft × ' + sqft + ')';
-  document.getElementById('surfaceTotal').textContent = fmt(surface);
-  document.getElementById('railingRow').style.display = railing > 0 ? 'flex' : 'none';
-  document.getElementById('railingTotal').textContent = fmt(railing);
-  document.getElementById('stairsRow').style.display = stairsTotal > 0 ? 'flex' : 'none';
-  document.getElementById('stairsLabel').textContent = 'Stairs (' + stairs + ' steps)';
-  document.getElementById('stairsTotal').textContent = fmt(stairsTotal);
+  document.getElementById('cleaningRow').style.display = c.enabled ? 'flex' : 'none';
+  document.getElementById('cleaningLabel').textContent = 'Cleaning (deck wash)';
+  document.getElementById('cleaningTotal').textContent = fmt(c.deck_wash);
+  document.getElementById('pergolaRow').style.display = c.pergola > 0 ? 'flex' : 'none';
+  document.getElementById('pergolaTotal').textContent = fmt(c.pergola);
+  document.getElementById('chicagoRow').style.display = c.surcharge > 0 ? 'flex' : 'none';
+  document.getElementById('chicagoTotal').textContent = fmt(c.surcharge);
   document.getElementById('extrasRow').style.display = extras > 0 ? 'flex' : 'none';
   document.getElementById('extrasTotal').textContent = fmt(extras);
   document.getElementById('subtotal').textContent = fmt(subtotal);
@@ -310,7 +344,13 @@ function updateTotal() {
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.railing, els.stairs, els.discount].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.discount].forEach(el => el.addEventListener('input', updateTotal));
+cleaningEnabled.addEventListener('change', () => {
+  document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
+  updatePergolaVisibility(); updateTotal();
+});
+chicago.addEventListener('change', updateTotal);
+lightClean.addEventListener('change', updateTotal);
 
 // --- Extra line items ---
 const extraItemsDiv = document.getElementById('extraItems');
@@ -407,14 +447,20 @@ form.addEventListener('submit', async (e) => {
   fd.append('customer_address', document.getElementById('customer_address').value.trim());
   fd.append('wood_type', els.wood.value);
   fd.append('deck_location', els.location.value);
+  fd.append('deck_height', els.height.value);
   fd.append('prior_finish', els.prior.value);
   fd.append('multilevel_levels', hasMultilevel.checked ? String(num(els.levels)) : '0');
   fd.append('surface_sqft', String(num(els.sqft)));
   fd.append('steps_included', stepsIncluded.checked ? '1' : '');
+  fd.append('has_railing', hasRailing.checked ? '1' : '');
   fd.append('railing_lf', hasRailing.checked ? String(num(els.railing)) : '0');
   fd.append('stairs_count', hasStairs.checked ? String(num(els.stairs)) : '0');
   fd.append('structures', JSON.stringify(getStructures()));
   fd.append('structures_other', document.getElementById('structures_other').value.trim());
+  fd.append('cleaning_enabled', cleaningEnabled.checked ? '1' : '');
+  fd.append('chicago_surcharge', chicago.checked ? '1' : '');
+  fd.append('light_clean', lightClean.checked ? '1' : '');
+  fd.append('pergola_gazebo_size', els.pergola.value);
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
