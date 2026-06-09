@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { db } from "./db.js";
 import {
-  STRUCTURE_TYPES, SERVICE_TYPES, OPACITIES, WOOD_TYPES, PREP_LEVELS,
+  STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, PRIOR_FINISHES, DECK_STRUCTURES,
   DECK_PRICING, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
@@ -83,10 +83,10 @@ app.get("/api/config", requireAuth, (req, res) => {
 
 app.get("/api/pricing/deck", requireAuth, (req, res) => {
   res.json({
-    services: SERVICE_TYPES,
-    opacities: OPACITIES,
     wood_types: WOOD_TYPES,
-    prep_levels: PREP_LEVELS,
+    deck_locations: DECK_LOCATIONS,
+    prior_finishes: PRIOR_FINISHES,
+    structures: DECK_STRUCTURES,
     pricing: DECK_PRICING,
   });
 });
@@ -137,7 +137,7 @@ app.post("/api/render", requireAuth, renderUpload.single("photo"), async (req, r
 // ---- Estimates: list ----
 app.get("/api/estimates", requireAuth, (req, res) => {
   const rows = db.prepare(`
-    SELECT id, created_at, customer_name, structure_type, service_type,
+    SELECT id, created_at, customer_name, structure_type, wood_type,
            surface_sqft, pricing_snapshot, status
     FROM estimates ORDER BY datetime(created_at) DESC LIMIT 100
   `).all();
@@ -147,7 +147,7 @@ app.get("/api/estimates", requireAuth, (req, res) => {
     const photoCount = db.prepare("SELECT COUNT(*) AS c FROM estimate_photos WHERE estimate_id = ?").get(r.id).c;
     return {
       id: r.id, created_at: r.created_at, customer_name: r.customer_name,
-      structure_type: r.structure_type, service_type: r.service_type,
+      structure_type: r.structure_type, wood_type: r.wood_type,
       surface_sqft: r.surface_sqft, status: r.status, total, photo_count: photoCount,
     };
   }));
@@ -166,16 +166,31 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
     id: row.id, created_at: row.created_at, updated_at: row.updated_at, status: row.status,
     customer: { name: row.customer_name, phone: row.customer_phone, email: row.customer_email, address: row.customer_address },
     structure_type: row.structure_type,
-    project: {
-      service_type: row.service_type, opacity: row.opacity, wood_type: row.wood_type,
-      prep_level: row.prep_level, surface_sqft: row.surface_sqft,
-      railing_lf: row.railing_lf, stairs_count: row.stairs_count,
-    },
+    project: (() => {
+      let structures = [];
+      try { structures = JSON.parse(row.structures || "[]"); } catch (_) {}
+      return {
+        wood_type: row.wood_type,
+        deck_location: row.deck_location,
+        multilevel_levels: row.multilevel_levels,
+        surface_sqft: row.surface_sqft,
+        steps_included: !!row.steps_included,
+        railing_lf: row.railing_lf,
+        stairs_count: row.stairs_count,
+        structures,
+        structures_other: row.structures_other,
+        prior_finish: row.prior_finish,
+      };
+    })(),
     labels: {
-      service: (SERVICE_TYPES[row.service_type] || {}).label,
-      opacity: (OPACITIES[row.opacity] || {}).label,
       wood: (WOOD_TYPES[row.wood_type] || {}).label,
-      prep: (PREP_LEVELS[row.prep_level] || {}).label,
+      deck_location: (DECK_LOCATIONS[row.deck_location] || {}).label,
+      prior_finish: (PRIOR_FINISHES[row.prior_finish] || {}).label,
+      structures: (() => {
+        let s = [];
+        try { s = JSON.parse(row.structures || "[]"); } catch (_) {}
+        return s.map(id => (DECK_STRUCTURES[id] || {}).label || id);
+      })(),
     },
     breakdown,
     hcp: { customer_id: row.hcp_customer_id, estimate_id: row.hcp_estimate_id, synced_at: row.hcp_synced_at, enabled: hcpEnabled() },
@@ -218,28 +233,33 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const customer_email = (b.customer_email || "").trim() || null;
     const customer_address = (b.customer_address || "").trim() || null;
 
-    const service_type = (b.service_type || "").trim();
-    const opacity = (b.opacity || "").trim();
     const wood_type = (b.wood_type || "").trim();
-    const prep_level = (b.prep_level || "standard").trim();
+    const deck_location = (b.deck_location || "").trim() || null;
+    const prior_finish = (b.prior_finish || "").trim() || null;
+    const multilevel_levels = b.multilevel_levels ? parseInt(b.multilevel_levels, 10) : 0;
+    const steps_included = b.steps_included ? 1 : 0;
     const surface_sqft = parseFloat(b.surface_sqft);
     const railing_lf = b.railing_lf ? parseFloat(b.railing_lf) : 0;
     const stairs_count = b.stairs_count ? parseInt(b.stairs_count, 10) : 0;
     const discount = b.discount ? parseFloat(b.discount) : 0;
     const source_hcp_estimate_id = (b.source_hcp_estimate_id || "").trim() || null;
+    const structures_other = (b.structures_other || "").trim() || null;
     let extras = [];
     try { extras = b.extra_items ? JSON.parse(b.extra_items) : []; } catch (_) { extras = []; }
+    let structuresIn = [];
+    try { structuresIn = b.structures ? JSON.parse(b.structures) : []; } catch (_) { structuresIn = []; }
+    const structures = (Array.isArray(structuresIn) ? structuresIn : []).filter(s => DECK_STRUCTURES[s]);
 
     // Validation
     if (!customer_name) return res.status(400).json({ error: "Customer name is required" });
     if (!customer_phone && !customer_email) return res.status(400).json({ error: "Phone or email required" });
-    if (!SERVICE_TYPES[service_type]) return res.status(400).json({ error: "Invalid service type" });
-    if (!OPACITIES[opacity]) return res.status(400).json({ error: "Invalid opacity" });
     if (!WOOD_TYPES[wood_type]) return res.status(400).json({ error: "Invalid wood type" });
-    if (!PREP_LEVELS[prep_level]) return res.status(400).json({ error: "Invalid prep level" });
+    if (deck_location && !DECK_LOCATIONS[deck_location]) return res.status(400).json({ error: "Invalid deck location" });
+    if (prior_finish && !PRIOR_FINISHES[prior_finish]) return res.status(400).json({ error: "Invalid prior finish" });
     if (!Number.isFinite(surface_sqft) || surface_sqft <= 0) return res.status(400).json({ error: "Invalid square footage" });
     if (!Number.isFinite(railing_lf) || railing_lf < 0) return res.status(400).json({ error: "Invalid railing length" });
     if (!Number.isFinite(stairs_count) || stairs_count < 0) return res.status(400).json({ error: "Invalid stair count" });
+    if (!Number.isFinite(multilevel_levels) || multilevel_levels < 0) return res.status(400).json({ error: "Invalid level count" });
     if (!Number.isFinite(discount) || discount < 0) return res.status(400).json({ error: "Invalid discount" });
 
     const cleanExtras = [];
@@ -252,21 +272,22 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     }
 
     const breakdown = computeDeckEstimate({
-      service_type, opacity, wood_type, prep_level,
-      surface_sqft, railing_lf, stairs_count, discount, extra_items: cleanExtras,
+      wood_type, surface_sqft, railing_lf, stairs_count, discount, extra_items: cleanExtras,
     });
 
     const result = db.prepare(`
       INSERT INTO estimates (
         customer_name, customer_phone, customer_email, customer_address,
-        structure_type, service_type, opacity, wood_type, prep_level,
-        surface_sqft, railing_lf, stairs_count,
+        structure_type, wood_type, deck_location, multilevel_levels,
+        surface_sqft, steps_included, railing_lf, stairs_count,
+        structures, structures_other, prior_finish,
         extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
-      structure_type, service_type, opacity, wood_type, prep_level,
-      surface_sqft, railing_lf, stairs_count,
+      structure_type, wood_type, deck_location, multilevel_levels,
+      surface_sqft, steps_included, railing_lf, stairs_count,
+      JSON.stringify(structures), structures_other, prior_finish,
       JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown), source_hcp_estimate_id
     );
     const estimateId = result.lastInsertRowid;

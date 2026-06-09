@@ -29,13 +29,21 @@ db.exec(`
     structure_type TEXT NOT NULL,
 
     -- Deck/structure project details (nullable so other structures can extend later)
-    service_type TEXT,       -- stain | seal
-    opacity TEXT,            -- clear | semi_transparent | semi_solid | solid
-    wood_type TEXT,          -- pressure_treated | cedar | redwood | hardwood | composite
-    prep_level TEXT,         -- standard | weathered | failing_finish
+    wood_type TEXT,          -- pressure_treated | cedar | hardwood | composite
+    deck_location TEXT,      -- above_ground | rooftop
+    multilevel_levels INTEGER NOT NULL DEFAULT 0,  -- 0 = single level
     surface_sqft REAL,
+    steps_included INTEGER NOT NULL DEFAULT 0,      -- sq ft includes the stairs?
     railing_lf REAL DEFAULT 0,
     stairs_count INTEGER DEFAULT 0,
+    structures TEXT NOT NULL DEFAULT '[]',          -- JSON array of structure ids
+    structures_other TEXT,                          -- free text when "other" selected
+    prior_finish TEXT,       -- bare_wood | solid_stain_acrylic | oil_based_color_seal | clear_seal
+
+    -- Legacy columns (no longer collected; kept for older rows)
+    service_type TEXT,
+    opacity TEXT,
+    prep_level TEXT,
 
     extra_items TEXT NOT NULL DEFAULT '[]',   -- JSON array of {description, price}
     discount_cents INTEGER NOT NULL DEFAULT 0,
@@ -70,7 +78,16 @@ db.exec(`
 `);
 
 // --- lightweight migrations for databases created before a column was added ---
-const estimateCols = db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name);
-if (!estimateCols.includes("source_hcp_estimate_id")) {
-  db.exec("ALTER TABLE estimates ADD COLUMN source_hcp_estimate_id TEXT");
+const MIGRATIONS = {
+  source_hcp_estimate_id: "TEXT",
+  deck_location: "TEXT",
+  multilevel_levels: "INTEGER NOT NULL DEFAULT 0",
+  steps_included: "INTEGER NOT NULL DEFAULT 0",
+  structures: "TEXT NOT NULL DEFAULT '[]'",
+  structures_other: "TEXT",
+  prior_finish: "TEXT",
+};
+const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
+for (const [name, ddl] of Object.entries(MIGRATIONS)) {
+  if (!estimateCols.has(name)) db.exec(`ALTER TABLE estimates ADD COLUMN ${name} ${ddl}`);
 }

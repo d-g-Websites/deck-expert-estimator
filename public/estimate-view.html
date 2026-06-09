@@ -63,14 +63,19 @@ function render(e) {
     f('Name', e.customer.name) + f('Phone', e.customer.phone || '—') +
     f('Email', e.customer.email || '—') + f('Address', e.customer.address || '—') + '</div>');
 
+  const pr = e.project;
+  const structuresStr = (e.labels.structures && e.labels.structures.length)
+    ? e.labels.structures.join(', ') + (pr.structures_other ? ' (' + pr.structures_other + ')' : '')
+    : '—';
   const project = card(cap(e.structure_type) + ' project',
-    row('Service', e.labels.service || e.project.service_type) +
-    row('Finish', e.labels.opacity || e.project.opacity) +
-    row('Wood', e.labels.wood || e.project.wood_type) +
-    row('Prep', e.labels.prep || e.project.prep_level) +
-    row('Surface', (e.project.surface_sqft || 0) + ' sq ft' + (b.rate_per_sqft != null ? ' @ $' + b.rate_per_sqft.toFixed(2) + '/sq ft' : '')) +
-    row('Railing', (e.project.railing_lf || 0) + ' lf') +
-    row('Stairs', (e.project.stairs_count || 0) + ' steps'));
+    row('Wood', e.labels.wood || pr.wood_type || '—') +
+    row('Deck location', e.labels.deck_location || '—') +
+    row('Multi-level', pr.multilevel_levels > 0 ? ('Yes — ' + pr.multilevel_levels + ' levels') : 'No') +
+    row('Square footage', (pr.surface_sqft || 0) + ' sq ft' + (pr.steps_included ? ' (incl. steps)' : '') + (b.rate_per_sqft != null ? ' @ $' + b.rate_per_sqft.toFixed(2) + '/sq ft' : '')) +
+    row('Railing', (pr.railing_lf > 0) ? (pr.railing_lf + ' lf') : 'No') +
+    row('Stairs', (pr.stairs_count > 0) ? (pr.stairs_count + ' steps') : 'No') +
+    row('Structures', structuresStr) +
+    row('Prior finish', e.labels.prior_finish || '—'));
 
   let extras = '';
   if (b.extras_list && b.extras_list.length) {

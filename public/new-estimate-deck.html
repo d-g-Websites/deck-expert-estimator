@@ -25,6 +25,17 @@
   .success-card { background: #fff; border-radius: var(--radius); padding: 2rem; text-align: center; border: 1px solid var(--line); }
   .success-card h2 { color: #065f46; margin: 0 0 0.5rem; }
   .success-card .actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+  .toggle { padding: 0.65rem 0; border-top: 1px solid var(--line); }
+  .check-line { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; cursor: pointer; color: var(--dark); }
+  .check-line input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--amber); flex: none; }
+  .conditional { margin-top: 0.6rem; padding-left: 1.65rem; }
+  .sub-label { display: block; font-size: 0.82rem; color: var(--gray); margin-bottom: 0.3rem; font-weight: 600; }
+  .field-group { margin-top: 1rem; }
+  .group-label { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--dark); }
+  .structures-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .structures-grid label { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; background: #fff; }
+  .structures-grid label:has(input:checked) { border-color: var(--amber); background: var(--cream); }
+  .structures-grid input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--amber); flex: none; }
 </style>
 </head>
 <body>
@@ -69,21 +80,51 @@
     <section class="card">
       <h2>Project</h2>
       <div class="grid-2">
-        <div class="field"><label for="service_type">Service</label><select id="service_type"></select></div>
-        <div class="field"><label for="opacity">Opacity</label><select id="opacity"></select></div>
         <div class="field"><label for="wood_type">Wood type</label><select id="wood_type"></select></div>
-        <div class="field"><label for="prep_level">Prep</label><select id="prep_level"></select></div>
+        <div class="field"><label for="deck_location">Deck location</label><select id="deck_location"></select></div>
       </div>
-      <div id="rateNotice" class="notice" style="display:none;margin-top:0.5rem"></div>
-    </section>
 
-    <section class="card">
-      <h2>Measurements</h2>
-      <div class="field"><label for="surface_sqft">Deck surface (sq ft) *</label><input type="number" id="surface_sqft" inputmode="decimal" step="0.1" min="0" required></div>
-      <div class="grid-2">
-        <div class="field"><label for="railing_lf">Railing (linear ft)</label><input type="number" id="railing_lf" inputmode="decimal" step="0.1" min="0"></div>
-        <div class="field"><label for="stairs_count">Stairs (steps)</label><input type="number" id="stairs_count" inputmode="numeric" step="1" min="0"></div>
+      <div class="toggle">
+        <label class="check-line"><input type="checkbox" id="hasMultilevel"> Multi-level deck</label>
+        <div id="multilevelWrap" class="conditional" style="display:none">
+          <label for="multilevel_levels" class="sub-label">How many levels?</label>
+          <input type="number" id="multilevel_levels" min="2" step="1" inputmode="numeric" placeholder="2">
+        </div>
       </div>
+
+      <div class="toggle">
+        <label class="check-line"><input type="checkbox" id="hasRailing"> Railing</label>
+        <div id="railingWrap" class="conditional" style="display:none">
+          <label for="railing_lf" class="sub-label">How long? (linear feet)</label>
+          <input type="number" id="railing_lf" min="0" step="0.1" inputmode="decimal" placeholder="0">
+        </div>
+      </div>
+
+      <div class="toggle">
+        <label class="check-line"><input type="checkbox" id="hasStairs"> Stairs</label>
+        <div id="stairsWrap" class="conditional" style="display:none">
+          <label for="stairs_count" class="sub-label">How many steps?</label>
+          <input type="number" id="stairs_count" min="0" step="1" inputmode="numeric" placeholder="0">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="group-label">Structures included in the quote</label>
+        <div class="structures-grid" id="structuresGrid"></div>
+        <div id="structuresOtherWrap" class="conditional" style="display:none;padding-left:0">
+          <input type="text" id="structures_other" placeholder="Describe the other structure(s)…">
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:1rem">
+        <label for="surface_sqft">Square footage of the deck *</label>
+        <input type="number" id="surface_sqft" inputmode="decimal" step="0.1" min="0" required>
+        <label class="check-line" style="margin-top:0.6rem;font-weight:500"><input type="checkbox" id="steps_included"> Steps included in this square footage</label>
+      </div>
+
+      <div class="field"><label for="prior_finish">Any prior finishes</label><select id="prior_finish"></select></div>
+
+      <div id="rateNotice" class="notice" style="display:none;margin-top:0.5rem"></div>
     </section>
 
     <section class="card">
@@ -125,13 +166,14 @@
 const form = document.getElementById('estimateForm');
 const errorBanner = document.getElementById('errorBanner');
 const saveBtn = document.getElementById('saveBtn');
+const $ = (id) => document.getElementById(id);
 const els = {
-  service: document.getElementById('service_type'), opacity: document.getElementById('opacity'),
-  wood: document.getElementById('wood_type'), prep: document.getElementById('prep_level'),
-  sqft: document.getElementById('surface_sqft'), railing: document.getElementById('railing_lf'),
-  stairs: document.getElementById('stairs_count'), discount: document.getElementById('discount'),
+  wood: $('wood_type'), location: $('deck_location'), prior: $('prior_finish'),
+  sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
+  levels: $('multilevel_levels'), discount: $('discount'),
 };
-let PRICING = null, PREP = null;
+const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
+let PRICING = null;
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
@@ -167,11 +209,11 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  PRICING = data.pricing; PREP = data.prep_levels;
-  fillSelect(els.service, data.services);
-  fillSelect(els.opacity, data.opacities);
+  PRICING = data.pricing;
   fillSelect(els.wood, data.wood_types);
-  fillSelect(els.prep, data.prep_levels);
+  fillSelect(els.location, data.deck_locations, 'Select…');
+  fillSelect(els.prior, data.prior_finishes, 'Select…');
+  buildStructures(data.structures);
   updateTotal();
 });
 fetch('/api/swatches').then(r => r.json()).then(data => {
@@ -187,19 +229,47 @@ fetch('/api/config').then(r => r.json()).then(cfg => {
   if (!cfg.visualizer_enabled) { renderBtn.disabled = true; renderBtn.title = 'Set OPENAI_API_KEY to enable'; }
 });
 
-function fillSelect(sel, obj) {
+function fillSelect(sel, obj, blankLabel) {
   sel.innerHTML = '';
+  if (blankLabel) { const o = document.createElement('option'); o.value = ''; o.textContent = blankLabel; sel.appendChild(o); }
   for (const [id, info] of Object.entries(obj)) {
     const o = document.createElement('option'); o.value = id; o.textContent = info.label; sel.appendChild(o);
   }
   sel.addEventListener('change', updateTotal);
 }
 
-function surfaceRate() {
+function buildStructures(obj) {
+  const grid = document.getElementById('structuresGrid');
+  grid.innerHTML = '';
+  for (const [id, info] of Object.entries(obj)) {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = '<input type="checkbox" value="' + id + '"> ' + info.label;
+    const cb = lbl.querySelector('input');
+    if (id === 'other') cb.addEventListener('change', () => {
+      document.getElementById('structuresOtherWrap').style.display = cb.checked ? 'block' : 'none';
+    });
+    grid.appendChild(lbl);
+  }
+}
+function getStructures() {
+  return Array.from(document.querySelectorAll('#structuresGrid input:checked')).map(c => c.value);
+}
+
+// conditional yes/no rows
+function wireToggle(cb, wrapId, input) {
+  cb.addEventListener('change', () => {
+    document.getElementById(wrapId).style.display = cb.checked ? 'block' : 'none';
+    if (!cb.checked && input) input.value = '';
+    updateTotal();
+  });
+}
+wireToggle(hasMultilevel, 'multilevelWrap', els.levels);
+wireToggle(hasRailing, 'railingWrap', els.railing);
+wireToggle(hasStairs, 'stairsWrap', els.stairs);
+
+function woodRate() {
   if (!PRICING) return null;
-  const byOpacity = PRICING.surface[els.service.value]; if (!byOpacity) return null;
-  const byWood = byOpacity[els.opacity.value]; if (!byWood) return null;
-  const r = byWood[els.wood.value];
+  const r = PRICING.surface_sqft[els.wood.value];
   return (r === null || r === undefined) ? null : r;
 }
 function num(el) { const v = parseFloat(el.value); return Number.isFinite(v) ? v : 0; }
@@ -207,11 +277,13 @@ function fmt(v) { return '$' + v.toFixed(2); }
 
 function updateTotal() {
   if (!PRICING) return;
-  const rate = surfaceRate();
-  const prepMult = (PREP[els.prep.value] || { multiplier: 1 }).multiplier;
-  const sqft = num(els.sqft), railingLf = num(els.railing), stairs = num(els.stairs), discount = num(els.discount);
-  const surface = rate == null ? 0 : rate * sqft * prepMult;
-  const railing = (PRICING.railing_lf[els.service.value] || 0) * railingLf;
+  const rate = woodRate();
+  const sqft = num(els.sqft);
+  const railingLf = hasRailing.checked ? num(els.railing) : 0;
+  const stairs = hasStairs.checked ? num(els.stairs) : 0;
+  const discount = num(els.discount);
+  const surface = rate == null ? 0 : rate * sqft;
+  const railing = PRICING.railing_lf * railingLf;
   const stairsTotal = PRICING.stairs_each * stairs;
   const extras = getExtras().reduce((s, x) => s + x.price, 0);
   const subtotal = surface + railing + stairsTotal + extras;
@@ -220,11 +292,11 @@ function updateTotal() {
   const notice = document.getElementById('rateNotice');
   if (rate == null) {
     notice.style.display = 'block';
-    notice.textContent = 'No rate set for this Service + Opacity + Wood combination. Surface will price at $0 — pick another combo or set the rate in pricing.js.';
+    notice.textContent = 'No $/sq ft rate set for this wood type — surface will price at $0. Set it in pricing.js.';
   } else { notice.style.display = 'none'; }
 
   document.getElementById('surfaceLabel').textContent = rate == null ? 'Surface (no rate set)'
-    : 'Surface ($' + rate.toFixed(2) + '/sq ft × ' + sqft + (prepMult !== 1 ? ' × ' + prepMult + ' prep' : '') + ')';
+    : 'Surface ($' + rate.toFixed(2) + '/sq ft × ' + sqft + ')';
   document.getElementById('surfaceTotal').textContent = fmt(surface);
   document.getElementById('railingRow').style.display = railing > 0 ? 'flex' : 'none';
   document.getElementById('railingTotal').textContent = fmt(railing);
@@ -333,13 +405,16 @@ form.addEventListener('submit', async (e) => {
   fd.append('customer_phone', document.getElementById('customer_phone').value.trim());
   fd.append('customer_email', document.getElementById('customer_email').value.trim());
   fd.append('customer_address', document.getElementById('customer_address').value.trim());
-  fd.append('service_type', els.service.value);
-  fd.append('opacity', els.opacity.value);
   fd.append('wood_type', els.wood.value);
-  fd.append('prep_level', els.prep.value);
+  fd.append('deck_location', els.location.value);
+  fd.append('prior_finish', els.prior.value);
+  fd.append('multilevel_levels', hasMultilevel.checked ? String(num(els.levels)) : '0');
   fd.append('surface_sqft', String(num(els.sqft)));
-  fd.append('railing_lf', String(num(els.railing)));
-  fd.append('stairs_count', String(num(els.stairs)));
+  fd.append('steps_included', stepsIncluded.checked ? '1' : '');
+  fd.append('railing_lf', hasRailing.checked ? String(num(els.railing)) : '0');
+  fd.append('stairs_count', hasStairs.checked ? String(num(els.stairs)) : '0');
+  fd.append('structures', JSON.stringify(getStructures()));
+  fd.append('structures_other', document.getElementById('structures_other').value.trim());
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));

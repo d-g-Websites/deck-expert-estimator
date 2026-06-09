@@ -72,7 +72,7 @@ fetch('/api/estimates').then(r => r.json()).then(estimates => {
     a.className = 'estimate-row';
     const dt = new Date(e.created_at + 'Z');
     const dateStr = dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const svc = [cap(e.structure_type), cap(e.service_type)].filter(Boolean).join(' · ');
+    const svc = [cap(e.structure_type), (e.wood_type || '').replace(/_/g, ' ')].filter(Boolean).join(' · ');
     a.innerHTML =
       '<div><div class="name">' + esc(e.customer_name) + '</div>' +
       '<div class="meta">#' + e.id + ' · ' + dateStr + ' · ' + svc + ' · ' + (e.surface_sqft || 0) + ' sq ft</div></div>' +
