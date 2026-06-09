@@ -54,7 +54,7 @@ export const STAIN_BRANDS = {
       shadow:              { name: "7650 Shadow",             hex: "#4E4034", file: "Shadow-7650.png",                desc: "Rymar 7650 Shadow — a dark grayish-brown semi-transparent penetrating wood sealer" },
       pine_cone:           { name: "7655 Pine Cone",          hex: "#7C5230", file: "Pine-Cone7655.png",              desc: "Rymar 7655 Pine Cone — a medium warm brown semi-transparent penetrating wood sealer" },
       hickory_bark:        { name: "7660 Hickory Bark",       hex: "#5C4126", file: "Hickory-Bark-7660.png",          desc: "Rymar 7660 Hickory Bark — a dark warm hickory-brown semi-transparent penetrating wood sealer" },
-      teak:                { name: "5040 Teak",               hex: "#A97C45", file: "teak-5040.png",                  desc: "Rymar 5040 Teak — a warm golden teak-brown semi-transparent penetrating wood sealer" },
+      teak:                { name: "5040 Teak",               hex: "#7A3B2A", file: "teak-5040.png",                  desc: "Rymar 5040 Teak — a deep reddish-brown teak/mahogany-toned semi-transparent penetrating wood sealer" },
     },
   },
   // TODO: populate from the Benjamin Moore solid-stain chart.
@@ -129,27 +129,24 @@ async function preprocess(buffer, maxDim) {
 
 function buildPrompt(swatch, hasReference) {
   const finishLabel = `${swatch.brand_name} ${swatch.name}`;
-  const lines = [
-    `You are doing precise, restrained photo editing — applying a wood stain (${swatch.desc}) to a deck. The goal is a believable real-estate "after" photo, NOT a glamour or HDR render.`,
-  ];
+  const lines = [];
   if (hasReference) {
     lines.push(
-      `IMAGE 1 is a small REFERENCE swatch shown ONLY to indicate the general HUE of "${finishLabel}". The swatch is a heavy, full-strength coat on bright fresh wood under studio light — do NOT reproduce that intensity or darkness. Apply only a light fraction of that strength.`,
+      `You are doing precise, realistic photo editing — applying the wood stain "${finishLabel}" to a deck so the customer can see this exact color on their deck. Aim for a believable "after" photo, NOT a glamour or HDR render.`,
+      `IMAGE 1 is a REFERENCE swatch showing the ACTUAL color of "${finishLabel}". Reproduce THIS color — both its hue and its depth — clearly and recognizably on the deck. The swatch is shot under bright studio light, so render it slightly more muted and matte than the swatch, but keep the SAME hue and do NOT wash it out or shift it lighter.`,
       `IMAGE 2 is the TARGET: the customer's actual deck. Apply the "${finishLabel}" color to it.`,
-      `TASK: refinish ONLY the wood deck surfaces (floor boards, stairs, railings) in Image 2 to a realistic, slightly muted version of the "${finishLabel}" color.`,
+      `TASK: refinish ONLY the wood deck surfaces (floor boards, stairs, railings, benches) in Image 2 with the "${finishLabel}" color.`,
     );
   } else {
     lines.push(
-      `Refinish ONLY the wood deck surfaces (floor boards, stairs, railings) with a realistic, slightly muted "${finishLabel}" finish: ${swatch.desc}.`,
+      `You are doing precise, realistic photo editing — applying a wood stain to a deck. Aim for a believable "after" photo, NOT a glamour or HDR render.`,
+      `Refinish ONLY the wood deck surfaces (floor boards, stairs, railings, benches) with the "${finishLabel}" color: ${swatch.desc}. Make the color clearly recognizable.`,
     );
   }
   lines.push(
-    `CRITICAL — keep it natural and understated:`,
-    `Do NOT brighten the image, raise exposure, add contrast, or oversaturate. Keep the EXACT original lighting, exposure, white balance, shadows, and time of day from Image 2.`,
-    `Apply the stain as a TRANSLUCENT wash — a light tinted glaze at roughly 40% strength, NOT paint. The deck's existing wood grain, knots, and natural board-to-board light/dark variation MUST stay clearly visible through the tint. The boards must still read as real wood that was lightly tinted, never as a solid, uniformly recoated or painted surface.`,
-    `Keep the deck close to its ORIGINAL brightness — only a gentle hue shift, not a full recolor. Do NOT darken the deck much; even the darker colors (Dark Oak, Black Walnut) must stay relatively light and translucent rather than deep, opaque, or near-black. When in doubt, err lighter, more subtle, and more transparent.`,
-    `Use a natural matte / low-sheen finish — no glossy shine, no glow, no HDR look, no wet appearance.`,
-    `Preserve everything else exactly as-is: same perspective, lighting, house, siding, furniture, plants, sky, and objects on the deck. Only the wood surface color/tone changes. The result should look like an ordinary phone photo of a freshly stained deck taken in the same conditions.`,
+    `Make it look like a real stain job: apply the color as a SEMI-TRANSPARENT stain so the wood grain and board-to-board variation still show through — not opaque paint, and not glossy. Use a natural matte / low-sheen finish: no shine, glow, wet look, or HDR.`,
+    `Do NOT brighten the overall photo, boost exposure or contrast, or change the scene. Keep the exact original lighting, exposure, white balance, shadows, sky, house, siding, plants, furniture, and perspective. ONLY the wood surfaces change color.`,
+    `The applied color must be clearly visible and accurate to the swatch — just slightly muted and matte. Do NOT leave the deck looking faded, washed-out, or like bare/untinted wood.`,
   );
   return lines.join(" ");
 }
