@@ -166,9 +166,8 @@
           <div class="field"><label for="stain_custom_desc">Custom product description</label><input type="text" id="stain_custom_desc" placeholder="Product name / details…"></div>
           <div class="toggle" style="border-top:none;padding-top:0"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_customer_supplied"> Customer supplied (remove product cost)</label></div>
         </div>
-        <div class="field"><label for="stain_vertical_sqft">Approx. vertical area to coat (sq ft, optional)</label><input type="number" id="stain_vertical_sqft" min="0" step="1" inputmode="decimal" placeholder="0"></div>
         <div id="stainLaborNote" class="notice" style="display:none;margin-top:0.5rem"></div>
-        <div class="hint">Stain material &amp; supplies are added at cost, based on horizontal + vertical area.</div>
+        <div class="hint">Stain material &amp; supplies are added at cost, based on the deck square footage. Railing/verticals are priced via the “Railing” option in Project.</div>
       </div>
     </section>
 
@@ -222,7 +221,7 @@ const els = {
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
   levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
   sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
-  stainProcess: $('stain_process'), stainCustomDesc: $('stain_custom_desc'), stainVert: $('stain_vertical_sqft'),
+  stainProcess: $('stain_process'), stainCustomDesc: $('stain_custom_desc'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
@@ -407,7 +406,7 @@ function computeMaterials() {
     if (s) total += s.price * Math.max(1, horizontal / s.per_sqft);
   }
   if (stainingEnabled.checked) {
-    const combined = horizontal + num(els.stainVert);
+    const combined = horizontal;
     if (combined > 0) {
       const proc = PROCESSES && PROCESSES[els.stainProcess.value];
       const matKey = proc && proc.material;
@@ -495,7 +494,7 @@ function updateTotal() {
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.discount, els.levels, els.vlen, els.vhgt, els.stainVert].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.discount, els.levels, els.vlen, els.vhgt].forEach(el => el.addEventListener('input', updateTotal));
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updateTotal();
@@ -629,7 +628,6 @@ form.addEventListener('submit', async (e) => {
   fd.append('stain_process', els.stainProcess.value);
   fd.append('stain_custom_desc', els.stainCustomDesc.value.trim());
   fd.append('stain_customer_supplied', stainCustomerSupplied.checked ? '1' : '');
-  fd.append('stain_vertical_sqft', stainingEnabled.checked ? String(num(els.stainVert)) : '0');
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
