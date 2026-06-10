@@ -175,8 +175,8 @@ export function computeMaterials(input) {
     items.push({ id: "cleaner_brightener", label: s.label, cost: proratedSupply(s, horizontal) });
   }
 
-  // Stain material + staining supplies (needs stain_brand + combined area).
-  const brand = MATERIALS_PRICING.stain_brands[input.stain_brand];
+  // Stain material + staining supplies (needs staining on + stain_brand + combined area).
+  const brand = input.staining_enabled ? MATERIALS_PRICING.stain_brands[input.stain_brand] : null;
   if (brand && combined > 0) {
     const gallons = Math.ceil(combined / brand.coverage_sqft);
     items.push({ id: "stain_material", label: `${brand.label} stain (${gallons} gal)`, cost: round2(gallons * brand.price_per_gallon) });
@@ -220,22 +220,85 @@ export function computeSanding(input) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// STAINING / SEALING (labor) RATE TABLES — per product/brand. EDIT THESE.
+// sq ft tiers (index): 0=<200, 1=200–300, 2=300–400, 3=400–500, 4=500–600, 5=>600.
+// Only brands listed here are priced; others get added as their tables arrive.
+// ---------------------------------------------------------------------------
+export const STAINING_PRICING = {
+  rymar: {
+    label: "Rymar",
+    base_no_railing:   [600, 700, 800, 900, 950, 950],
+    base_with_railing: [950, 1050, 1150, 1200, 1250, 1250],
+    over_600_extra_per_200_no_railing: 100,
+    over_600_extra_per_200_with_railing: 150,
+    story_multiplier: { 1: [1, 1, 1, 1, 1, 1], 2: [1.5, 1.5, 1.5, 1.4, 1.3, 1.2], 3: [2, 2, 2, 2, 2, 2] },
+    pergola_gazebo: { none: 0, s15x10: 600, s20x15: 800, s25x20: 1100, s30x25: 1300 },
+  },
+};
+
+function sqftTier6(sqft) {
+  if (sqft < 200) return 0;
+  if (sqft <= 300) return 1;
+  if (sqft <= 400) return 2;
+  if (sqft <= 500) return 3;
+  if (sqft <= 600) return 4;
+  return 5;
+}
+
+// Staining/sealing labor for the chosen product. Same shape as cleaning:
+// base by sq-ft tier × railing, × story multiplier (from multi-level), + pergola
+// add-on, + Chicago 10%.
+export function computeStaining(input) {
+  if (!input.staining_enabled) return { enabled: false, total: 0 };
+  const brand = STAINING_PRICING[input.stain_brand];
+  if (!brand) return { enabled: true, priced: false, brand: input.stain_brand || null, labor: 0, pergola_gazebo: 0, surcharge: 0, total: 0 };
+
+  const sqft = Number(input.surface_sqft) || 0;
+  const hasRailing = !!input.has_railing;
+  const tier = sqftTier6(sqft);
+
+  const table = hasRailing ? brand.base_with_railing : brand.base_no_railing;
+  let base = table[tier];
+  if (tier === 5 && sqft > 600) {
+    const per = hasRailing ? brand.over_600_extra_per_200_with_railing : brand.over_600_extra_per_200_no_railing;
+    base += Math.ceil((sqft - 600) / 200) * per;
+  }
+
+  const levels = Number(input.multilevel_levels) || 0;
+  const stories = levels >= 2 ? Math.min(3, levels) : 1;
+  const mult = (brand.story_multiplier[stories] || brand.story_multiplier[1])[tier];
+
+  const labor = base * mult;
+  const pergola = brand.pergola_gazebo[input.pergola_gazebo_size] || 0;
+
+  let total = labor + pergola, surcharge = 0;
+  if (input.chicago_surcharge) { surcharge = total * CLEANING_PRICING.chicago_surcharge; total += surcharge; }
+
+  return {
+    enabled: true, priced: true, brand: input.stain_brand, base, story_multiplier: mult,
+    labor: round2(labor), pergola_gazebo: pergola, surcharge: round2(surcharge), total: round2(total),
+  };
+}
+
 // Build the full deck estimate breakdown (frozen into pricing_snapshot at save).
 export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
+  const staining = computeStaining(input);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
   const extras = Array.isArray(input.extra_items) ? input.extra_items : [];
   const extrasTotal = extras.reduce((s, x) => s + (parseFloat(x.price) || 0), 0);
 
-  const subtotal = cleaning.total + sanding.total + materials.total + extrasTotal;
+  const subtotal = cleaning.total + sanding.total + staining.total + materials.total + extrasTotal;
   const total = Math.max(0, subtotal - discount);
 
   return {
     cleaning,
     sanding,
+    staining,
     materials,
     extras: extrasTotal,
     extras_list: extras,

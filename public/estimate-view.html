@@ -76,7 +76,8 @@ function render(e) {
     row('Stairs', (pr.stairs_count > 0) ? (pr.stairs_count + ' steps') : 'No') +
     row('Structures', structuresStr) +
     row('Prior finish', e.labels.prior_finish || '—') +
-    row('Sanding', e.labels.sanding ? (e.labels.sanding + (pr.vertical_sanding ? ' + verticals' : '')) : 'No'));
+    row('Sanding', e.labels.sanding ? (e.labels.sanding + (pr.vertical_sanding ? ' + verticals' : '')) : 'No') +
+    row('Staining', pr.staining_enabled ? (e.labels.stain_brand || pr.stain_brand || 'Yes') : 'No'));
 
   let extras = '';
   if (b.extras_list && b.extras_list.length) {
@@ -85,13 +86,16 @@ function render(e) {
 
   const cl = b.cleaning || {};
   const sd = b.sanding || {};
+  const stn = b.staining || {};
   const clSurcharge = cl.chicago_surcharge ? ((cl.total || 0) - ((cl.deck_wash || 0) + (cl.pergola_gazebo || 0))) : 0;
-  const surcharge = clSurcharge + (sd.surcharge || 0);
+  const surcharge = clSurcharge + (sd.surcharge || 0) + (stn.surcharge || 0);
   const totals = '<section class="card total-card"><h2 style="color:var(--cream)">Total</h2>' +
     (cl.enabled ? row('Cleaning (deck wash)' + (cl.light_clean ? ' — light clean' : ''), fmt(cl.deck_wash || 0)) : '') +
     (cl.pergola_gazebo > 0 ? row('Pergola/gazebo cleaning', fmt(cl.pergola_gazebo)) : '') +
     (sd.enabled ? row('Sanding' + (e.labels.sanding ? ' (' + e.labels.sanding + ')' : ''), fmt(sd.horizontal_labor || 0)) : '') +
     (sd.vertical_labor > 0 ? row('Sanding — verticals (' + Number(sd.vertical_sqft || 0).toFixed(0) + ' sq ft)', fmt(sd.vertical_labor)) : '') +
+    ((stn.enabled && stn.labor > 0) ? row('Staining' + (e.labels.stain_brand ? ' (' + e.labels.stain_brand + ')' : ''), fmt(stn.labor)) : '') +
+    (stn.pergola_gazebo > 0 ? row('Pergola/gazebo staining', fmt(stn.pergola_gazebo)) : '') +
     (surcharge > 0 ? row('Chicago / Michigan (+10%)', fmt(surcharge)) : '') +
     ((b.materials && b.materials.items) ? b.materials.items.map(it => row(it.label, fmt(it.cost))).join('') : '') +
     (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +

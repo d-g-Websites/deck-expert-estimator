@@ -114,6 +114,10 @@
         <div id="structuresOtherWrap" class="conditional" style="display:none;padding-left:0">
           <input type="text" id="structures_other" placeholder="Describe the other structure(s)…">
         </div>
+        <div id="pergolaGazeboWrap" class="conditional" style="display:none;padding-left:0">
+          <label for="pergola_gazebo_size" class="sub-label">Pergola / gazebo size (cleaning &amp; staining add-on)</label>
+          <select id="pergola_gazebo_size"></select>
+        </div>
       </div>
 
       <div class="field" style="margin-top:1rem">
@@ -132,10 +136,6 @@
       <label class="check-line" style="margin-bottom:0.25rem"><input type="checkbox" id="cleaning_enabled"> Power wash &amp; clean the deck</label>
       <div id="cleaningOpts" style="display:none">
         <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="light_clean"> New deck — light clean only (−30%)</label></div>
-        <div class="field" id="pergolaGazeboWrap" style="display:none;margin-top:0.85rem">
-          <label for="pergola_gazebo_size">Pergola / gazebo exterior cleaning</label>
-          <select id="pergola_gazebo_size"></select>
-        </div>
         <div class="hint" style="margin-top:0.6rem">Uses the square footage &amp; railing from Project. Square footage is horizontal deck surface only.</div>
       </div>
       <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="chicago_surcharge"> Chicago or town by Michigan (+10%)</label></div>
@@ -158,6 +158,16 @@
     </section>
 
     <section class="card">
+      <h2>Staining / Sealing</h2>
+      <label class="check-line" style="margin-bottom:0.25rem"><input type="checkbox" id="staining_enabled"> Stain / seal the deck</label>
+      <div id="stainingOpts" style="display:none">
+        <div class="field" style="margin-top:0.85rem"><label for="stain_brand">Product / brand</label><select id="stain_brand"></select></div>
+        <div class="field"><label for="stain_vertical_sqft">Approx. vertical area to coat (sq ft, optional)</label><input type="number" id="stain_vertical_sqft" min="0" step="1" inputmode="decimal" placeholder="0"></div>
+        <div class="hint">Stain material &amp; supplies are added at cost, based on horizontal + vertical area.</div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Extra services</h2>
       <div id="extraItems"></div>
       <button type="button" id="addExtra" class="btn secondary">+ Add line item</button>
@@ -174,6 +184,8 @@
       <div class="total-row" id="pergolaRow" style="display:none"><span>Pergola/gazebo cleaning</span><span id="pergolaTotal">$0.00</span></div>
       <div class="total-row" id="sandingHRow" style="display:none"><span id="sandingHLabel">Sanding</span><span id="sandingHTotal">$0.00</span></div>
       <div class="total-row" id="sandingVRow" style="display:none"><span id="sandingVLabel">Sanding — verticals</span><span id="sandingVTotal">$0.00</span></div>
+      <div class="total-row" id="stainingRow" style="display:none"><span id="stainingLabel">Staining</span><span id="stainingTotal">$0.00</span></div>
+      <div class="total-row" id="stainPergolaRow" style="display:none"><span>Pergola/gazebo staining</span><span id="stainPergolaTotal">$0.00</span></div>
       <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
       <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
@@ -205,11 +217,12 @@ const els = {
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
   levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
   sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
+  stainBrand: $('stain_brand'), stainVert: $('stain_vertical_sqft'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
-const verticalSanding = $('vertical_sanding');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null;
+const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled');
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -249,15 +262,23 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions; WOODS = data.wood_types;
+  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions; WOODS = data.wood_types; STAINING = data.staining_pricing;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
   fillSelect(els.prior, data.prior_finishes, 'Select…');
   fillPergolaSizes(data.pergola_gazebo_sizes);
   fillSanding(data.sanding_conditions);
+  fillStainBrands(data.staining_pricing);
   buildStructures(data.structures);
   updateTotal();
 });
+function fillStainBrands(obj) {
+  els.stainBrand.innerHTML = '';
+  for (const [id, info] of Object.entries(obj)) {
+    const o = document.createElement('option'); o.value = id; o.textContent = info.label; els.stainBrand.appendChild(o);
+  }
+  els.stainBrand.addEventListener('change', updateTotal);
+}
 function fillSanding(obj) {
   els.sandingCond.innerHTML = '<option value="">No sanding</option>';
   for (const [id, info] of Object.entries(obj)) {
@@ -318,7 +339,7 @@ function getStructures() {
 }
 function structuresHas(id) { return !!document.querySelector('#structuresGrid input[value="' + id + '"]:checked'); }
 function updatePergolaVisibility() {
-  const show = (structuresHas('pergola') || structuresHas('gazebo')) && cleaningEnabled.checked;
+  const show = structuresHas('pergola') || structuresHas('gazebo');
   document.getElementById('pergolaGazeboWrap').style.display = show ? 'block' : 'none';
   if (!show && els.pergola) els.pergola.value = 'none';
 }
@@ -370,7 +391,38 @@ function computeMaterials() {
     const s = MATERIALS.supplies[key];
     if (s) total += s.price * Math.max(1, horizontal / s.per_sqft);
   }
+  if (stainingEnabled.checked) {
+    const mb = MATERIALS.stain_brands[els.stainBrand.value];
+    const combined = horizontal + num(els.stainVert);
+    if (mb && combined > 0) {
+      total += Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
+      const ss = MATERIALS.supplies.stain_supplies;
+      total += ss.price * Math.max(1, combined / ss.per_sqft);
+    }
+  }
   return { total: Math.round(total * 100) / 100 };
+}
+
+function computeStaining() {
+  if (!STAINING || !stainingEnabled.checked) return { enabled: false, labor: 0, pergola: 0, surcharge: 0, total: 0 };
+  const brand = STAINING[els.stainBrand.value];
+  if (!brand) return { enabled: true, priced: false, labor: 0, pergola: 0, surcharge: 0, total: 0 };
+  const sqft = num(els.sqft);
+  const tier = sqft < 200 ? 0 : sqft <= 300 ? 1 : sqft <= 400 ? 2 : sqft <= 500 ? 3 : sqft <= 600 ? 4 : 5;
+  const table = hasRailing.checked ? brand.base_with_railing : brand.base_no_railing;
+  let base = table[tier];
+  if (tier === 5 && sqft > 600) {
+    const per = hasRailing.checked ? brand.over_600_extra_per_200_with_railing : brand.over_600_extra_per_200_no_railing;
+    base += Math.ceil((sqft - 600) / 200) * per;
+  }
+  const lv = hasMultilevel.checked ? (num(els.levels) || 2) : 0;
+  const stories = lv >= 2 ? Math.min(3, lv) : 1;
+  const mult = (brand.story_multiplier[stories] || brand.story_multiplier[1])[tier];
+  const labor = base * mult;
+  const pergola = brand.pergola_gazebo[els.pergola.value] || 0;
+  let total = labor + pergola, surcharge = 0;
+  if (chicago.checked) { surcharge = total * CLEANING.chicago_surcharge; total += surcharge; }
+  return { enabled: true, priced: true, labor, pergola, surcharge, total };
 }
 
 function computeSanding() {
@@ -389,10 +441,11 @@ function updateTotal() {
   if (!CLEANING) return;
   const c = computeCleaning();
   const s = computeSanding();
+  const st = computeStaining();
   const m = computeMaterials();
   const extras = getExtras().reduce((acc, x) => acc + x.price, 0);
   const discount = num(els.discount);
-  const subtotal = c.total + s.total + m.total + extras;
+  const subtotal = c.total + s.total + st.total + m.total + extras;
   const grand = Math.max(0, subtotal - discount);
 
   document.getElementById('cleaningRow').style.display = c.enabled ? 'flex' : 'none';
@@ -406,7 +459,12 @@ function updateTotal() {
   document.getElementById('sandingHTotal').textContent = fmt(s.horizontal);
   document.getElementById('sandingVRow').style.display = s.vertical > 0 ? 'flex' : 'none';
   document.getElementById('sandingVTotal').textContent = fmt(s.vertical);
-  const surcharge = c.surcharge + s.surcharge;
+  document.getElementById('stainingRow').style.display = (st.enabled && st.labor > 0) ? 'flex' : 'none';
+  document.getElementById('stainingLabel').textContent = 'Staining' + ((STAINING && STAINING[els.stainBrand.value]) ? ' (' + STAINING[els.stainBrand.value].label + ')' : '');
+  document.getElementById('stainingTotal').textContent = fmt(st.labor);
+  document.getElementById('stainPergolaRow').style.display = st.pergola > 0 ? 'flex' : 'none';
+  document.getElementById('stainPergolaTotal').textContent = fmt(st.pergola);
+  const surcharge = c.surcharge + s.surcharge + st.surcharge;
   document.getElementById('chicagoRow').style.display = surcharge > 0 ? 'flex' : 'none';
   document.getElementById('chicagoTotal').textContent = fmt(surcharge);
   document.getElementById('verticalSqftHint').textContent = verticalSanding.checked ? ('Vertical area: ' + (num(els.vlen) * num(els.vhgt)).toFixed(0) + ' sq ft') : '';
@@ -419,16 +477,20 @@ function updateTotal() {
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.discount, els.levels, els.vlen, els.vhgt].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.discount, els.levels, els.vlen, els.vhgt, els.stainVert].forEach(el => el.addEventListener('input', updateTotal));
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
-  updatePergolaVisibility(); updateTotal();
+  updateTotal();
 });
 chicago.addEventListener('change', updateTotal);
 lightClean.addEventListener('change', updateTotal);
 verticalSanding.addEventListener('change', () => {
   document.getElementById('verticalWrap').style.display = verticalSanding.checked ? 'block' : 'none';
   if (!verticalSanding.checked) { els.vlen.value = ''; els.vhgt.value = ''; }
+  updateTotal();
+});
+stainingEnabled.addEventListener('change', () => {
+  document.getElementById('stainingOpts').style.display = stainingEnabled.checked ? 'block' : 'none';
   updateTotal();
 });
 
@@ -544,6 +606,9 @@ form.addEventListener('submit', async (e) => {
   fd.append('vertical_sanding', verticalSanding.checked ? '1' : '');
   fd.append('vertical_length', verticalSanding.checked ? String(num(els.vlen)) : '0');
   fd.append('vertical_height', verticalSanding.checked ? String(num(els.vhgt)) : '0');
+  fd.append('staining_enabled', stainingEnabled.checked ? '1' : '');
+  fd.append('stain_brand', els.stainBrand.value);
+  fd.append('stain_vertical_sqft', stainingEnabled.checked ? String(num(els.stainVert)) : '0');
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));

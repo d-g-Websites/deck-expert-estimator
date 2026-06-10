@@ -53,6 +53,11 @@ db.exec(`
     vertical_length REAL DEFAULT 0,
     vertical_height REAL DEFAULT 0,
 
+    -- Staining / sealing inputs
+    staining_enabled INTEGER NOT NULL DEFAULT 0,
+    stain_brand TEXT,
+    stain_vertical_sqft REAL DEFAULT 0,
+
     -- Legacy columns (no longer collected; kept for older rows)
     service_type TEXT,
     opacity TEXT,
@@ -108,6 +113,9 @@ const MIGRATIONS = {
   vertical_sanding: "INTEGER NOT NULL DEFAULT 0",
   vertical_length: "REAL DEFAULT 0",
   vertical_height: "REAL DEFAULT 0",
+  staining_enabled: "INTEGER NOT NULL DEFAULT 0",
+  stain_brand: "TEXT",
+  stain_vertical_sqft: "REAL DEFAULT 0",
 };
 const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
 for (const [name, ddl] of Object.entries(MIGRATIONS)) {
