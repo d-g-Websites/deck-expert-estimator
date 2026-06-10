@@ -77,7 +77,7 @@ function render(e) {
     row('Structures', structuresStr) +
     row('Prior finish', e.labels.prior_finish || '—') +
     row('Sanding', e.labels.sanding ? (e.labels.sanding + (pr.vertical_sanding ? ' + verticals' : '')) : 'No') +
-    row('Staining', pr.staining_enabled ? (e.labels.stain_brand || pr.stain_brand || 'Yes') : 'No'));
+    row('Staining', pr.staining_enabled ? ((e.labels.stain_process || 'Yes') + (pr.stain_custom_desc ? ' — ' + pr.stain_custom_desc : '') + (pr.stain_customer_supplied ? ' (customer supplied)' : '')) : 'No'));
 
   let extras = '';
   if (b.extras_list && b.extras_list.length) {
@@ -94,7 +94,7 @@ function render(e) {
     (cl.pergola_gazebo > 0 ? row('Pergola/gazebo cleaning', fmt(cl.pergola_gazebo)) : '') +
     (sd.enabled ? row('Sanding' + (e.labels.sanding ? ' (' + e.labels.sanding + ')' : ''), fmt(sd.horizontal_labor || 0)) : '') +
     (sd.vertical_labor > 0 ? row('Sanding — verticals (' + Number(sd.vertical_sqft || 0).toFixed(0) + ' sq ft)', fmt(sd.vertical_labor)) : '') +
-    ((stn.enabled && stn.labor > 0) ? row('Staining' + (e.labels.stain_brand ? ' (' + e.labels.stain_brand + ')' : ''), fmt(stn.labor)) : '') +
+    ((stn.enabled && stn.labor > 0) ? row('Staining' + (e.labels.stain_process ? ' (' + e.labels.stain_process + ')' : ''), fmt(stn.labor)) : '') +
     (stn.pergola_gazebo > 0 ? row('Pergola/gazebo staining', fmt(stn.pergola_gazebo)) : '') +
     (surcharge > 0 ? row('Chicago / Michigan (+10%)', fmt(surcharge)) : '') +
     ((b.materials && b.materials.items) ? b.materials.items.map(it => row(it.label, fmt(it.cost))).join('') : '') +

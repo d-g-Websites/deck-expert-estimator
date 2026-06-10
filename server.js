@@ -8,7 +8,7 @@ import { db } from "./db.js";
 import {
   STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, PRIOR_FINISHES, DECK_STRUCTURES,
   PERGOLA_GAZEBO_SIZES, SANDING_CONDITIONS, CLEANING_PRICING, MATERIALS_PRICING,
-  STAINING_PRICING, computeDeckEstimate,
+  STAINING_PRICING, STAIN_PROCESSES, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
 import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
@@ -93,6 +93,7 @@ app.get("/api/pricing/deck", requireAuth, (req, res) => {
     cleaning_pricing: CLEANING_PRICING,
     materials_pricing: MATERIALS_PRICING,
     staining_pricing: STAINING_PRICING,
+    stain_processes: STAIN_PROCESSES,
   });
 });
 
@@ -195,7 +196,9 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
         vertical_length: row.vertical_length,
         vertical_height: row.vertical_height,
         staining_enabled: !!row.staining_enabled,
-        stain_brand: row.stain_brand,
+        stain_process: row.stain_process,
+        stain_custom_desc: row.stain_custom_desc,
+        stain_customer_supplied: !!row.stain_customer_supplied,
         stain_vertical_sqft: row.stain_vertical_sqft,
       };
     })(),
@@ -205,7 +208,7 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
       prior_finish: (PRIOR_FINISHES[row.prior_finish] || {}).label,
       pergola_gazebo_size: (PERGOLA_GAZEBO_SIZES[row.pergola_gazebo_size] || {}).label,
       sanding: (SANDING_CONDITIONS[row.sanding_condition] || {}).label,
-      stain_brand: (MATERIALS_PRICING.stain_brands[row.stain_brand] || {}).label,
+      stain_process: (STAIN_PROCESSES[row.stain_process] || {}).label,
       structures: (() => {
         let s = [];
         try { s = JSON.parse(row.structures || "[]"); } catch (_) {}
@@ -277,7 +280,9 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const vertical_height = b.vertical_height ? parseFloat(b.vertical_height) : 0;
     // Staining / sealing inputs
     const staining_enabled = b.staining_enabled ? 1 : 0;
-    const stain_brand = (b.stain_brand || "").trim() || null;
+    const stain_process = (b.stain_process || "").trim() || null;
+    const stain_custom_desc = (b.stain_custom_desc || "").trim() || null;
+    const stain_customer_supplied = b.stain_customer_supplied ? 1 : 0;
     const stain_vertical_sqft = b.stain_vertical_sqft ? parseFloat(b.stain_vertical_sqft) : 0;
     let extras = [];
     try { extras = b.extra_items ? JSON.parse(b.extra_items) : []; } catch (_) { extras = []; }
@@ -293,7 +298,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     if (prior_finish && !PRIOR_FINISHES[prior_finish]) return res.status(400).json({ error: "Invalid prior finish" });
     if (pergola_gazebo_size && !PERGOLA_GAZEBO_SIZES[pergola_gazebo_size]) return res.status(400).json({ error: "Invalid pergola/gazebo size" });
     if (sanding_condition && !SANDING_CONDITIONS[sanding_condition]) return res.status(400).json({ error: "Invalid sanding condition" });
-    if (stain_brand && !MATERIALS_PRICING.stain_brands[stain_brand]) return res.status(400).json({ error: "Invalid stain brand" });
+    if (stain_process && !STAIN_PROCESSES[stain_process]) return res.status(400).json({ error: "Invalid stain process" });
     if (!Number.isFinite(surface_sqft) || surface_sqft <= 0) return res.status(400).json({ error: "Invalid square footage" });
     if (!Number.isFinite(railing_lf) || railing_lf < 0) return res.status(400).json({ error: "Invalid railing length" });
     if (!Number.isFinite(stairs_count) || stairs_count < 0) return res.status(400).json({ error: "Invalid stair count" });
@@ -313,7 +318,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       wood_type, cleaning_enabled, surface_sqft, has_railing, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
-      staining_enabled, stain_brand, vertical_sqft: stain_vertical_sqft,
+      staining_enabled, stain_process, stain_customer_supplied, vertical_sqft: stain_vertical_sqft,
       discount, extra_items: cleanExtras,
     });
 
@@ -325,9 +330,9 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         structures, structures_other, prior_finish,
         cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
         sanding_condition, vertical_sanding, vertical_length, vertical_height,
-        staining_enabled, stain_brand, stain_vertical_sqft,
+        staining_enabled, stain_process, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft,
         extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
@@ -335,7 +340,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       JSON.stringify(structures), structures_other, prior_finish,
       cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
-      staining_enabled, stain_brand, stain_vertical_sqft,
+      staining_enabled, stain_process, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft,
       JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown), source_hcp_estimate_id
     );
     const estimateId = result.lastInsertRowid;

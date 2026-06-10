@@ -161,8 +161,13 @@
       <h2>Staining / Sealing</h2>
       <label class="check-line" style="margin-bottom:0.25rem"><input type="checkbox" id="staining_enabled"> Stain / seal the deck</label>
       <div id="stainingOpts" style="display:none">
-        <div class="field" style="margin-top:0.85rem"><label for="stain_brand">Product / brand</label><select id="stain_brand"></select></div>
+        <div class="field" style="margin-top:0.85rem"><label for="stain_process">Process</label><select id="stain_process"></select></div>
+        <div id="customerChoiceWrap" style="display:none">
+          <div class="field"><label for="stain_custom_desc">Custom product description</label><input type="text" id="stain_custom_desc" placeholder="Product name / details…"></div>
+          <div class="toggle" style="border-top:none;padding-top:0"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_customer_supplied"> Customer supplied (remove product cost)</label></div>
+        </div>
         <div class="field"><label for="stain_vertical_sqft">Approx. vertical area to coat (sq ft, optional)</label><input type="number" id="stain_vertical_sqft" min="0" step="1" inputmode="decimal" placeholder="0"></div>
+        <div id="stainLaborNote" class="notice" style="display:none;margin-top:0.5rem"></div>
         <div class="hint">Stain material &amp; supplies are added at cost, based on horizontal + vertical area.</div>
       </div>
     </section>
@@ -217,12 +222,12 @@ const els = {
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
   levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
   sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
-  stainBrand: $('stain_brand'), stainVert: $('stain_vertical_sqft'),
+  stainProcess: $('stain_process'), stainCustomDesc: $('stain_custom_desc'), stainVert: $('stain_vertical_sqft'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
-const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null;
+const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied');
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -262,22 +267,32 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions; WOODS = data.wood_types; STAINING = data.staining_pricing;
+  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions; WOODS = data.wood_types; STAINING = data.staining_pricing; PROCESSES = data.stain_processes;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
   fillSelect(els.prior, data.prior_finishes, 'Select…');
   fillPergolaSizes(data.pergola_gazebo_sizes);
   fillSanding(data.sanding_conditions);
-  fillStainBrands(data.staining_pricing);
+  fillStainProcesses(data.stain_processes);
   buildStructures(data.structures);
+  updateStainUI();
   updateTotal();
 });
-function fillStainBrands(obj) {
-  els.stainBrand.innerHTML = '';
+function fillStainProcesses(obj) {
+  els.stainProcess.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
-    const o = document.createElement('option'); o.value = id; o.textContent = info.label; els.stainBrand.appendChild(o);
+    const o = document.createElement('option'); o.value = id; o.textContent = info.label; els.stainProcess.appendChild(o);
   }
-  els.stainBrand.addEventListener('change', updateTotal);
+  els.stainProcess.addEventListener('change', () => { updateStainUI(); updateTotal(); });
+}
+function updateStainUI() {
+  const proc = PROCESSES && PROCESSES[els.stainProcess.value];
+  document.getElementById('customerChoiceWrap').style.display = (proc && proc.customer_choice) ? 'block' : 'none';
+  const note = document.getElementById('stainLaborNote');
+  if (stainingEnabled.checked && proc && !proc.labor) {
+    note.style.display = 'block';
+    note.textContent = 'Labor pricing for this product isn’t set yet — only material & supplies are counted so far.';
+  } else { note.style.display = 'none'; }
 }
 function fillSanding(obj) {
   els.sandingCond.innerHTML = '<option value="">No sanding</option>';
@@ -392,10 +407,12 @@ function computeMaterials() {
     if (s) total += s.price * Math.max(1, horizontal / s.per_sqft);
   }
   if (stainingEnabled.checked) {
-    const mb = MATERIALS.stain_brands[els.stainBrand.value];
     const combined = horizontal + num(els.stainVert);
-    if (mb && combined > 0) {
-      total += Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
+    if (combined > 0) {
+      const proc = PROCESSES && PROCESSES[els.stainProcess.value];
+      const matKey = proc && proc.material;
+      const mb = (matKey && !stainCustomerSupplied.checked) ? MATERIALS.stain_brands[matKey] : null;
+      if (mb) total += Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
       const ss = MATERIALS.supplies.stain_supplies;
       total += ss.price * Math.max(1, combined / ss.per_sqft);
     }
@@ -405,7 +422,8 @@ function computeMaterials() {
 
 function computeStaining() {
   if (!STAINING || !stainingEnabled.checked) return { enabled: false, labor: 0, pergola: 0, surcharge: 0, total: 0 };
-  const brand = STAINING[els.stainBrand.value];
+  const proc = PROCESSES && PROCESSES[els.stainProcess.value];
+  const brand = proc && proc.labor ? STAINING[proc.labor] : null;
   if (!brand) return { enabled: true, priced: false, labor: 0, pergola: 0, surcharge: 0, total: 0 };
   const sqft = num(els.sqft);
   const tier = sqft < 200 ? 0 : sqft <= 300 ? 1 : sqft <= 400 ? 2 : sqft <= 500 ? 3 : sqft <= 600 ? 4 : 5;
@@ -460,7 +478,7 @@ function updateTotal() {
   document.getElementById('sandingVRow').style.display = s.vertical > 0 ? 'flex' : 'none';
   document.getElementById('sandingVTotal').textContent = fmt(s.vertical);
   document.getElementById('stainingRow').style.display = (st.enabled && st.labor > 0) ? 'flex' : 'none';
-  document.getElementById('stainingLabel').textContent = 'Staining' + ((STAINING && STAINING[els.stainBrand.value]) ? ' (' + STAINING[els.stainBrand.value].label + ')' : '');
+  document.getElementById('stainingLabel').textContent = 'Staining' + ((PROCESSES && PROCESSES[els.stainProcess.value]) ? ' (' + PROCESSES[els.stainProcess.value].label + ')' : '');
   document.getElementById('stainingTotal').textContent = fmt(st.labor);
   document.getElementById('stainPergolaRow').style.display = st.pergola > 0 ? 'flex' : 'none';
   document.getElementById('stainPergolaTotal').textContent = fmt(st.pergola);
@@ -491,8 +509,9 @@ verticalSanding.addEventListener('change', () => {
 });
 stainingEnabled.addEventListener('change', () => {
   document.getElementById('stainingOpts').style.display = stainingEnabled.checked ? 'block' : 'none';
-  updateTotal();
+  updateStainUI(); updateTotal();
 });
+stainCustomerSupplied.addEventListener('change', updateTotal);
 
 // --- Extra line items ---
 const extraItemsDiv = document.getElementById('extraItems');
@@ -607,7 +626,9 @@ form.addEventListener('submit', async (e) => {
   fd.append('vertical_length', verticalSanding.checked ? String(num(els.vlen)) : '0');
   fd.append('vertical_height', verticalSanding.checked ? String(num(els.vhgt)) : '0');
   fd.append('staining_enabled', stainingEnabled.checked ? '1' : '');
-  fd.append('stain_brand', els.stainBrand.value);
+  fd.append('stain_process', els.stainProcess.value);
+  fd.append('stain_custom_desc', els.stainCustomDesc.value.trim());
+  fd.append('stain_customer_supplied', stainCustomerSupplied.checked ? '1' : '');
   fd.append('stain_vertical_sqft', stainingEnabled.checked ? String(num(els.stainVert)) : '0');
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));

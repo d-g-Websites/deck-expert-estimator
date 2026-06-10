@@ -175,11 +175,17 @@ export function computeMaterials(input) {
     items.push({ id: "cleaner_brightener", label: s.label, cost: proratedSupply(s, horizontal) });
   }
 
-  // Stain material + staining supplies (needs staining on + stain_brand + combined area).
-  const brand = input.staining_enabled ? MATERIALS_PRICING.stain_brands[input.stain_brand] : null;
-  if (brand && combined > 0) {
-    const gallons = Math.ceil(combined / brand.coverage_sqft);
-    items.push({ id: "stain_material", label: `${brand.label} stain (${gallons} gal)`, cost: round2(gallons * brand.price_per_gallon) });
+  // Staining material + supplies (needs staining on + combined area).
+  // Brush/roller supplies always apply when staining; the stain product itself is
+  // skipped when the customer supplies it, or when the process has no priced product.
+  if (input.staining_enabled && combined > 0) {
+    const proc = STAIN_PROCESSES[input.stain_process];
+    const matKey = proc && proc.material;
+    const brand = (matKey && !input.stain_customer_supplied) ? MATERIALS_PRICING.stain_brands[matKey] : null;
+    if (brand) {
+      const gallons = Math.ceil(combined / brand.coverage_sqft);
+      items.push({ id: "stain_material", label: `${brand.label} stain (${gallons} gal)`, cost: round2(gallons * brand.price_per_gallon) });
+    }
     const ss = MATERIALS_PRICING.supplies.stain_supplies;
     items.push({ id: "stain_supplies", label: ss.label, cost: proratedSupply(ss, combined) });
   }
@@ -237,6 +243,18 @@ export const STAINING_PRICING = {
   },
 };
 
+// Staining/sealing processes the tech can choose. `labor` -> STAINING_PRICING key
+// (null = labor table not added yet); `material` -> MATERIALS_PRICING.stain_brands
+// key (null = no priced product). customer_choice processes show a description
+// field + "customer supplied" toggle.
+export const STAIN_PROCESSES = {
+  rymar_oil_seal:   { label: "Rymar — Oil-Based Seal",            labor: "rymar",          material: "rymar" },
+  bm_solid:         { label: "Benjamin Moore — Solid Stain",      labor: "benjamin_moore", material: "benjamin_moore" },
+  ipe_oil:          { label: "IPE Oil",                           labor: "ipe_oil",        material: "ipe_oil" },
+  customer_oil:     { label: "Customer Choice — Oil-Based Product",  labor: null, material: null, customer_choice: true },
+  customer_acrylic: { label: "Customer Choice — Acrylic Product",    labor: null, material: null, customer_choice: true },
+};
+
 function sqftTier6(sqft) {
   if (sqft < 200) return 0;
   if (sqft <= 300) return 1;
@@ -251,8 +269,9 @@ function sqftTier6(sqft) {
 // add-on, + Chicago 10%.
 export function computeStaining(input) {
   if (!input.staining_enabled) return { enabled: false, total: 0 };
-  const brand = STAINING_PRICING[input.stain_brand];
-  if (!brand) return { enabled: true, priced: false, brand: input.stain_brand || null, labor: 0, pergola_gazebo: 0, surcharge: 0, total: 0 };
+  const proc = STAIN_PROCESSES[input.stain_process];
+  const brand = proc && proc.labor ? STAINING_PRICING[proc.labor] : null;
+  if (!brand) return { enabled: true, priced: false, process: input.stain_process || null, labor: 0, pergola_gazebo: 0, surcharge: 0, total: 0 };
 
   const sqft = Number(input.surface_sqft) || 0;
   const hasRailing = !!input.has_railing;
@@ -276,7 +295,7 @@ export function computeStaining(input) {
   if (input.chicago_surcharge) { surcharge = total * CLEANING_PRICING.chicago_surcharge; total += surcharge; }
 
   return {
-    enabled: true, priced: true, brand: input.stain_brand, base, story_multiplier: mult,
+    enabled: true, priced: true, process: input.stain_process, base, story_multiplier: mult,
     labor: round2(labor), pergola_gazebo: pergola, surcharge: round2(surcharge), total: round2(total),
   };
 }
