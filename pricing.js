@@ -241,6 +241,16 @@ export const STAINING_PRICING = {
     story_multiplier: { 1: [1, 1, 1, 1, 1, 1], 2: [1.5, 1.5, 1.5, 1.4, 1.3, 1.2], 3: [2, 2, 2, 2, 2, 2] },
     pergola_gazebo: { none: 0, s15x10: 600, s20x15: 800, s25x20: 1100, s30x25: 1300 },
   },
+  benjamin_moore: {
+    label: "Benjamin Moore Solid",
+    base_no_railing:   [500, 600, 700, 775, 850, 850],
+    base_with_railing: [850, 950, 1050, 1100, 1150, 1150],
+    over_600_extra_per_200_no_railing: 100,
+    over_600_extra_per_200_with_railing: 150,
+    story_multiplier: { 1: [1, 1, 1, 1, 1, 1], 2: [1.5, 1.5, 1.5, 1.4, 1.3, 1.2], 3: [2, 2, 2, 2, 2, 2] },
+    pergola_gazebo: { none: 0, s15x10: 600, s20x15: 800, s25x20: 1100, s30x25: 1300 },
+    metal_spindles_surcharge: 0.10,
+  },
 };
 
 // Staining/sealing processes the tech can choose. `labor` -> STAINING_PRICING key
@@ -271,7 +281,7 @@ export function computeStaining(input) {
   if (!input.staining_enabled) return { enabled: false, total: 0 };
   const proc = STAIN_PROCESSES[input.stain_process];
   const brand = proc && proc.labor ? STAINING_PRICING[proc.labor] : null;
-  if (!brand) return { enabled: true, priced: false, process: input.stain_process || null, labor: 0, pergola_gazebo: 0, surcharge: 0, total: 0 };
+  if (!brand) return { enabled: true, priced: false, process: input.stain_process || null, labor: 0, pergola_gazebo: 0, chicago_surcharge: 0, metal_surcharge: 0, surcharge: 0, total: 0 };
 
   const sqft = Number(input.surface_sqft) || 0;
   const hasRailing = !!input.has_railing;
@@ -291,12 +301,18 @@ export function computeStaining(input) {
   const labor = base * mult;
   const pergola = brand.pergola_gazebo[input.pergola_gazebo_size] || 0;
 
-  let total = labor + pergola, surcharge = 0;
-  if (input.chicago_surcharge) { surcharge = total * CLEANING_PRICING.chicago_surcharge; total += surcharge; }
+  const subtotal = labor + pergola;
+  const chicago_surcharge = input.chicago_surcharge ? subtotal * CLEANING_PRICING.chicago_surcharge : 0;
+  const metal_surcharge = (input.has_metal_spindles && input.has_railing && brand.metal_spindles_surcharge)
+    ? subtotal * brand.metal_spindles_surcharge : 0;
+  const surcharge = chicago_surcharge + metal_surcharge;
+  const total = subtotal + surcharge;
 
   return {
     enabled: true, priced: true, process: input.stain_process, base, story_multiplier: mult,
-    labor: round2(labor), pergola_gazebo: pergola, surcharge: round2(surcharge), total: round2(total),
+    labor: round2(labor), pergola_gazebo: pergola,
+    chicago_surcharge: round2(chicago_surcharge), metal_surcharge: round2(metal_surcharge),
+    surcharge: round2(surcharge), total: round2(total),
   };
 }
 

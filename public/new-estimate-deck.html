@@ -97,6 +97,7 @@
         <div id="railingWrap" class="conditional" style="display:none">
           <label for="railing_lf" class="sub-label">How long? (linear feet)</label>
           <input type="number" id="railing_lf" min="0" step="0.1" inputmode="decimal" placeholder="0">
+          <label class="check-line" style="margin-top:0.7rem;font-weight:500"><input type="checkbox" id="has_metal_spindles"> Metal spindles</label>
         </div>
       </div>
 
@@ -191,6 +192,7 @@
       <div class="total-row" id="stainingRow" style="display:none"><span id="stainingLabel">Staining</span><span id="stainingTotal">$0.00</span></div>
       <div class="total-row" id="stainPergolaRow" style="display:none"><span>Pergola/gazebo staining</span><span id="stainPergolaTotal">$0.00</span></div>
       <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
+      <div class="total-row" id="metalRow" style="display:none"><span>Metal spindles (+10%)</span><span id="metalTotal">$0.00</span></div>
       <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
       <div class="total-row subtotal"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
@@ -225,7 +227,7 @@ const els = {
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
-const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied');
+const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied'), metalSpindles = $('has_metal_spindles');
 let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
@@ -437,9 +439,10 @@ function computeStaining() {
   const mult = (brand.story_multiplier[stories] || brand.story_multiplier[1])[tier];
   const labor = base * mult;
   const pergola = brand.pergola_gazebo[els.pergola.value] || 0;
-  let total = labor + pergola, surcharge = 0;
-  if (chicago.checked) { surcharge = total * CLEANING.chicago_surcharge; total += surcharge; }
-  return { enabled: true, priced: true, labor, pergola, surcharge, total };
+  const subtotal = labor + pergola;
+  const chicagoS = chicago.checked ? subtotal * CLEANING.chicago_surcharge : 0;
+  const metalS = (metalSpindles.checked && hasRailing.checked && brand.metal_spindles_surcharge) ? subtotal * brand.metal_spindles_surcharge : 0;
+  return { enabled: true, priced: true, labor, pergola, chicago_surcharge: chicagoS, metal_surcharge: metalS, surcharge: chicagoS + metalS, total: subtotal + chicagoS + metalS };
 }
 
 function computeSanding() {
@@ -481,9 +484,11 @@ function updateTotal() {
   document.getElementById('stainingTotal').textContent = fmt(st.labor);
   document.getElementById('stainPergolaRow').style.display = st.pergola > 0 ? 'flex' : 'none';
   document.getElementById('stainPergolaTotal').textContent = fmt(st.pergola);
-  const surcharge = c.surcharge + s.surcharge + st.surcharge;
+  const surcharge = c.surcharge + s.surcharge + (st.chicago_surcharge || 0);
   document.getElementById('chicagoRow').style.display = surcharge > 0 ? 'flex' : 'none';
   document.getElementById('chicagoTotal').textContent = fmt(surcharge);
+  document.getElementById('metalRow').style.display = (st.metal_surcharge || 0) > 0 ? 'flex' : 'none';
+  document.getElementById('metalTotal').textContent = fmt(st.metal_surcharge || 0);
   document.getElementById('verticalSqftHint').textContent = verticalSanding.checked ? ('Vertical area: ' + (num(els.vlen) * num(els.vhgt)).toFixed(0) + ' sq ft') : '';
   document.getElementById('materialsRow').style.display = m.total > 0 ? 'flex' : 'none';
   document.getElementById('materialsTotal').textContent = fmt(m.total);
@@ -511,6 +516,8 @@ stainingEnabled.addEventListener('change', () => {
   updateStainUI(); updateTotal();
 });
 stainCustomerSupplied.addEventListener('change', updateTotal);
+metalSpindles.addEventListener('change', updateTotal);
+hasRailing.addEventListener('change', () => { if (!hasRailing.checked) metalSpindles.checked = false; });
 
 // --- Extra line items ---
 const extraItemsDiv = document.getElementById('extraItems');
@@ -612,6 +619,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('surface_sqft', String(num(els.sqft)));
   fd.append('steps_included', stepsIncluded.checked ? '1' : '');
   fd.append('has_railing', hasRailing.checked ? '1' : '');
+  fd.append('has_metal_spindles', (hasRailing.checked && metalSpindles.checked) ? '1' : '');
   fd.append('railing_lf', hasRailing.checked ? String(num(els.railing)) : '0');
   fd.append('stairs_count', hasStairs.checked ? String(num(els.stairs)) : '0');
   fd.append('structures', JSON.stringify(getStructures()));

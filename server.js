@@ -182,6 +182,7 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
         surface_sqft: row.surface_sqft,
         steps_included: !!row.steps_included,
         has_railing: !!row.has_railing,
+        has_metal_spindles: !!row.has_metal_spindles,
         railing_lf: row.railing_lf,
         stairs_count: row.stairs_count,
         structures,
@@ -262,6 +263,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const multilevel_levels = b.multilevel_levels ? parseInt(b.multilevel_levels, 10) : 0;
     const steps_included = b.steps_included ? 1 : 0;
     const has_railing = b.has_railing ? 1 : 0;
+    const has_metal_spindles = b.has_metal_spindles ? 1 : 0;
     const surface_sqft = parseFloat(b.surface_sqft);
     const railing_lf = b.railing_lf ? parseFloat(b.railing_lf) : 0;
     const stairs_count = b.stairs_count ? parseInt(b.stairs_count, 10) : 0;
@@ -315,7 +317,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     }
 
     const breakdown = computeDeckEstimate({
-      wood_type, cleaning_enabled, surface_sqft, has_railing, multilevel_levels,
+      wood_type, cleaning_enabled, surface_sqft, has_railing, has_metal_spindles, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
       staining_enabled, stain_process, stain_customer_supplied, vertical_sqft: stain_vertical_sqft,
@@ -326,17 +328,17 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       INSERT INTO estimates (
         customer_name, customer_phone, customer_email, customer_address,
         structure_type, wood_type, deck_location, multilevel_levels,
-        surface_sqft, steps_included, has_railing, railing_lf, stairs_count,
+        surface_sqft, steps_included, has_railing, has_metal_spindles, railing_lf, stairs_count,
         structures, structures_other, prior_finish,
         cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
         sanding_condition, vertical_sanding, vertical_length, vertical_height,
         staining_enabled, stain_process, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft,
         extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
-      surface_sqft, steps_included, has_railing, railing_lf, stairs_count,
+      surface_sqft, steps_included, has_railing, has_metal_spindles, railing_lf, stairs_count,
       JSON.stringify(structures), structures_other, prior_finish,
       cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,

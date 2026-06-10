@@ -35,6 +35,7 @@ db.exec(`
     surface_sqft REAL,
     steps_included INTEGER NOT NULL DEFAULT 0,      -- sq ft includes the stairs?
     has_railing INTEGER NOT NULL DEFAULT 0,
+    has_metal_spindles INTEGER NOT NULL DEFAULT 0,
     railing_lf REAL DEFAULT 0,
     stairs_count INTEGER DEFAULT 0,
     structures TEXT NOT NULL DEFAULT '[]',          -- JSON array of structure ids
@@ -104,6 +105,7 @@ const MIGRATIONS = {
   multilevel_levels: "INTEGER NOT NULL DEFAULT 0",
   steps_included: "INTEGER NOT NULL DEFAULT 0",
   has_railing: "INTEGER NOT NULL DEFAULT 0",
+  has_metal_spindles: "INTEGER NOT NULL DEFAULT 0",
   structures: "TEXT NOT NULL DEFAULT '[]'",
   structures_other: "TEXT",
   prior_finish: "TEXT",
