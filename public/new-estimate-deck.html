@@ -143,6 +143,7 @@
 
     <section class="card">
       <h2>Sanding (prep)</h2>
+      <div id="sandingWoodNote" class="notice" style="display:none;margin-bottom:0.85rem">Engineered hardwood — horizontal deck sanding isn't available; only railing (vertical) sanding applies.</div>
       <div class="field"><label for="sanding_condition">Deck condition / sanding type</label><select id="sanding_condition"></select></div>
       <div class="toggle">
         <label class="check-line"><input type="checkbox" id="vertical_sanding"> Sanding needed for vertical surfaces (railings)</label>
@@ -208,7 +209,11 @@ const els = {
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
 const verticalSanding = $('vertical_sanding');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null;
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null;
+function noHorizSanding() {
+  const w = WOODS && WOODS[els.wood.value];
+  return !!(w && w.no_horizontal_sanding);
+}
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
@@ -244,7 +249,7 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions;
+  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions; WOODS = data.wood_types;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
   fillSelect(els.prior, data.prior_finishes, 'Select…');
@@ -359,6 +364,12 @@ function computeMaterials() {
     const s = MATERIALS.supplies.cleaner_brightener;
     total += s.price * Math.max(1, horizontal / s.per_sqft);
   }
+  const cond = SANDING && SANDING[els.sandingCond.value];
+  if (cond && cond.supply && !noHorizSanding()) {
+    const key = { never: 'sand_never', prior: 'sand_prior', removal: 'sand_removal' }[cond.supply];
+    const s = MATERIALS.supplies[key];
+    if (s) total += s.price * Math.max(1, horizontal / s.per_sqft);
+  }
   return { total: Math.round(total * 100) / 100 };
 }
 
@@ -366,7 +377,7 @@ function computeSanding() {
   const cond = SANDING && SANDING[els.sandingCond.value];
   if (!cond) return { enabled: false, horizontal: 0, vertical: 0, surcharge: 0, total: 0, vsqft: 0, label: '' };
   const horizontal = num(els.sqft);
-  const hLabor = Math.max(cond.min || 0, cond.rate * horizontal);
+  const hLabor = noHorizSanding() ? 0 : Math.max(cond.min || 0, cond.rate * horizontal);
   let vsqft = 0, vLabor = 0;
   if (verticalSanding.checked) { vsqft = num(els.vlen) * num(els.vhgt); vLabor = cond.rate * vsqft; }
   let total = hLabor + vLabor, surcharge = 0;
@@ -389,6 +400,7 @@ function updateTotal() {
   document.getElementById('cleaningTotal').textContent = fmt(c.deck_wash);
   document.getElementById('pergolaRow').style.display = c.pergola > 0 ? 'flex' : 'none';
   document.getElementById('pergolaTotal').textContent = fmt(c.pergola);
+  document.getElementById('sandingWoodNote').style.display = noHorizSanding() ? 'block' : 'none';
   document.getElementById('sandingHRow').style.display = (s.enabled && s.horizontal > 0) ? 'flex' : 'none';
   document.getElementById('sandingHLabel').textContent = 'Sanding (' + s.label + ')';
   document.getElementById('sandingHTotal').textContent = fmt(s.horizontal);

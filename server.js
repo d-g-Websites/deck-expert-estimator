@@ -299,7 +299,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     }
 
     const breakdown = computeDeckEstimate({
-      cleaning_enabled, surface_sqft, has_railing, multilevel_levels,
+      wood_type, cleaning_enabled, surface_sqft, has_railing, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
       discount, extra_items: cleanExtras,

@@ -16,10 +16,11 @@ export const STRUCTURE_TYPES = {
 };
 
 export const WOOD_TYPES = {
-  pressure_treated: { label: "Pressure-treated" },
-  cedar:            { label: "Cedar" },
-  hardwood:         { label: "Hardwood (Ipe / Mahogany)" },
-  composite:        { label: "Composite" },
+  pressure_treated:    { label: "Pressure-treated" },
+  cedar:               { label: "Cedar" },
+  hardwood:            { label: "Hardwood (Ipe / Mahogany)" },
+  engineered_hardwood: { label: "Engineered hardwood", no_horizontal_sanding: true },
+  composite:           { label: "Composite" },
 };
 
 export const DECK_LOCATIONS = {
@@ -183,9 +184,11 @@ export function computeMaterials(input) {
     items.push({ id: "stain_supplies", label: ss.label, cost: proratedSupply(ss, combined) });
   }
 
-  // Sanding supply (needs a sanding condition). Horizontals only.
+  // Sanding supply (needs a sanding condition). Horizontals only — skipped when
+  // the wood type can't be surface-sanded (e.g. engineered hardwood).
   const sandCond = SANDING_CONDITIONS[input.sanding_condition];
-  if (sandCond && sandCond.supply) {
+  const noHorizSand = !!(WOOD_TYPES[input.wood_type] && WOOD_TYPES[input.wood_type].no_horizontal_sanding);
+  if (sandCond && sandCond.supply && !noHorizSand) {
     const key = { never: "sand_never", prior: "sand_prior", removal: "sand_removal" }[sandCond.supply];
     const s = MATERIALS_PRICING.supplies[key];
     if (s) items.push({ id: key, label: s.label, cost: proratedSupply(s, horizontal) });
@@ -200,8 +203,9 @@ export function computeMaterials(input) {
 export function computeSanding(input) {
   const cond = SANDING_CONDITIONS[input.sanding_condition];
   if (!cond) return { enabled: false, total: 0 };
+  const noHoriz = !!(WOOD_TYPES[input.wood_type] && WOOD_TYPES[input.wood_type].no_horizontal_sanding);
   const horizontal = Number(input.surface_sqft) || 0;
-  const horizLabor = Math.max(cond.min || 0, cond.rate * horizontal);
+  const horizLabor = noHoriz ? 0 : Math.max(cond.min || 0, cond.rate * horizontal);
   let vertical_sqft = 0, vertLabor = 0;
   if (input.vertical_sanding) {
     vertical_sqft = (Number(input.vertical_length) || 0) * (Number(input.vertical_height) || 0);
