@@ -157,6 +157,7 @@
       <div class="total-row" id="cleaningRow"><span id="cleaningLabel">Cleaning</span><span id="cleaningTotal">$0.00</span></div>
       <div class="total-row" id="pergolaRow" style="display:none"><span>Pergola/gazebo cleaning</span><span id="pergolaTotal">$0.00</span></div>
       <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
+      <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
       <div class="total-row subtotal"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
       <div class="total-row" id="discountRow" style="display:none"><span>Discount</span><span id="discountAmount">-$0.00</span></div>
@@ -188,7 +189,7 @@ const els = {
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
-let CLEANING = null, PGSIZES = null;
+let CLEANING = null, PGSIZES = null, MATERIALS = null;
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
@@ -224,7 +225,7 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes;
+  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
   fillSelect(els.prior, data.prior_finishes, 'Select…');
@@ -321,12 +322,24 @@ function computeCleaning() {
   return { enabled: true, deck_wash: deckWash, pergola, surcharge, total };
 }
 
+function computeMaterials() {
+  if (!MATERIALS) return { total: 0 };
+  let total = 0;
+  const horizontal = num(els.sqft);
+  if (cleaningEnabled.checked) {
+    const s = MATERIALS.supplies.cleaner_brightener;
+    total += s.price * Math.max(1, horizontal / s.per_sqft);
+  }
+  return { total: Math.round(total * 100) / 100 };
+}
+
 function updateTotal() {
   if (!CLEANING) return;
   const c = computeCleaning();
+  const m = computeMaterials();
   const extras = getExtras().reduce((s, x) => s + x.price, 0);
   const discount = num(els.discount);
-  const subtotal = c.total + extras;
+  const subtotal = c.total + m.total + extras;
   const grand = Math.max(0, subtotal - discount);
 
   document.getElementById('cleaningRow').style.display = c.enabled ? 'flex' : 'none';
@@ -336,6 +349,8 @@ function updateTotal() {
   document.getElementById('pergolaTotal').textContent = fmt(c.pergola);
   document.getElementById('chicagoRow').style.display = c.surcharge > 0 ? 'flex' : 'none';
   document.getElementById('chicagoTotal').textContent = fmt(c.surcharge);
+  document.getElementById('materialsRow').style.display = m.total > 0 ? 'flex' : 'none';
+  document.getElementById('materialsTotal').textContent = fmt(m.total);
   document.getElementById('extrasRow').style.display = extras > 0 ? 'flex' : 'none';
   document.getElementById('extrasTotal').textContent = fmt(extras);
   document.getElementById('subtotal').textContent = fmt(subtotal);

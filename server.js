@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 import { db } from "./db.js";
 import {
   STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, PRIOR_FINISHES, DECK_STRUCTURES,
-  PERGOLA_GAZEBO_SIZES, CLEANING_PRICING, computeDeckEstimate,
+  PERGOLA_GAZEBO_SIZES, CLEANING_PRICING, MATERIALS_PRICING, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
 import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
@@ -89,6 +89,7 @@ app.get("/api/pricing/deck", requireAuth, (req, res) => {
     structures: DECK_STRUCTURES,
     pergola_gazebo_sizes: PERGOLA_GAZEBO_SIZES,
     cleaning_pricing: CLEANING_PRICING,
+    materials_pricing: MATERIALS_PRICING,
   });
 });
 

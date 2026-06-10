@@ -88,6 +88,7 @@ function render(e) {
     (cl.enabled ? row('Cleaning (deck wash)' + (cl.light_clean ? ' — light clean' : ''), fmt(cl.deck_wash || 0)) : '') +
     (cl.pergola_gazebo > 0 ? row('Pergola/gazebo cleaning', fmt(cl.pergola_gazebo)) : '') +
     (clSurcharge > 0 ? row('Chicago / Michigan (+10%)', fmt(clSurcharge)) : '') +
+    ((b.materials && b.materials.items) ? b.materials.items.map(it => row(it.label, fmt(it.cost))).join('') : '') +
     (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +
     '<div class="row subtotal"><span class="label">Subtotal</span><span class="value">' + fmt(b.subtotal || 0) + '</span></div>' +
     (b.discount > 0 ? row('Discount', '-' + fmt(b.discount)) : '') +

@@ -120,19 +120,86 @@ export function computeCleaning(input) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// MATERIALS & SUPPLIES COSTS — EDIT THESE NUMBERS.
+// Stain material: gallons = ceil(area / coverage_sqft); cost = gallons × $/gal.
+//   Stain area = vertical + horizontal combined (per the rate sheet).
+// Supplies: cost = price × max(1, area / per_sqft) — prorated up for larger
+//   areas, never reduced below the baseline price for smaller ("don't deduct").
+// ---------------------------------------------------------------------------
+export const MATERIALS_PRICING = {
+  stain_brands: {
+    rymar:          { label: "Rymar",          coverage_sqft: 250, price_per_gallon: 150 },
+    benjamin_moore: { label: "Benjamin Moore", coverage_sqft: 250, price_per_gallon: 75 },
+    twp:            { label: "TWP",            coverage_sqft: 150, price_per_gallon: 75 },
+    ipe_oil:        { label: "Ipe Oil",        coverage_sqft: 300, price_per_gallon: 100 },
+    ready_seal:     { label: "Ready Seal",     coverage_sqft: 150, price_per_gallon: 60 },
+  },
+  supplies: {
+    cleaner_brightener: { label: "Cleaner & Brightener + gas (PW)", per_sqft: 300, price: 20,  area: "horizontal" },
+    stain_supplies:     { label: "Brush/roller/tape/covers",        per_sqft: 300, price: 50,  area: "combined" },
+    sand_never:         { label: "Sanding — never finished",        per_sqft: 300, price: 30,  area: "horizontal" },
+    sand_prior:         { label: "Sanding — previously finished",   per_sqft: 300, price: 50,  area: "horizontal" },
+    sand_removal:       { label: "Sanding — stain removal",         per_sqft: 300, price: 100, area: "horizontal" },
+  },
+};
+
+const round2 = (v) => Math.round(v * 100) / 100;
+function proratedSupply(item, area) {
+  return round2(item.price * Math.max(1, (Number(area) || 0) / item.per_sqft));
+}
+
+// Compute materials & supplies cost. Each component activates only when its
+// inputs exist — today that's the cleaner/brightener (tied to cleaning). Stain
+// material, staining supplies, and sanding switch on once the staining/prep
+// sections feed in stain_brand, vertical area, and sanding choice.
+export function computeMaterials(input) {
+  const items = [];
+  const horizontal = Number(input.surface_sqft) || 0;
+  const vertical = Number(input.vertical_sqft) || 0;   // captured later (staining section)
+  const combined = horizontal + vertical;
+
+  // Cleaner & Brightener + gas — included whenever we power wash / clean.
+  if (input.cleaning_enabled) {
+    const s = MATERIALS_PRICING.supplies.cleaner_brightener;
+    items.push({ id: "cleaner_brightener", label: s.label, cost: proratedSupply(s, horizontal) });
+  }
+
+  // Stain material + staining supplies (needs stain_brand + combined area).
+  const brand = MATERIALS_PRICING.stain_brands[input.stain_brand];
+  if (brand && combined > 0) {
+    const gallons = Math.ceil(combined / brand.coverage_sqft);
+    items.push({ id: "stain_material", label: `${brand.label} stain (${gallons} gal)`, cost: round2(gallons * brand.price_per_gallon) });
+    const ss = MATERIALS_PRICING.supplies.stain_supplies;
+    items.push({ id: "stain_supplies", label: ss.label, cost: proratedSupply(ss, combined) });
+  }
+
+  // Sanding (needs sanding choice: never | prior | removal). Horizontals only.
+  const sandKey = { never: "sand_never", prior: "sand_prior", removal: "sand_removal" }[input.sanding];
+  if (sandKey) {
+    const s = MATERIALS_PRICING.supplies[sandKey];
+    items.push({ id: sandKey, label: s.label, cost: proratedSupply(s, horizontal) });
+  }
+
+  const total = round2(items.reduce((s, x) => s + x.cost, 0));
+  return { items, total };
+}
+
 // Build the full deck estimate breakdown (frozen into pricing_snapshot at save).
 export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
+  const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
   const extras = Array.isArray(input.extra_items) ? input.extra_items : [];
   const extrasTotal = extras.reduce((s, x) => s + (parseFloat(x.price) || 0), 0);
 
-  const subtotal = cleaning.total + extrasTotal;
+  const subtotal = cleaning.total + materials.total + extrasTotal;
   const total = Math.max(0, subtotal - discount);
 
   return {
     cleaning,
+    materials,
     extras: extrasTotal,
     extras_list: extras,
     subtotal,
