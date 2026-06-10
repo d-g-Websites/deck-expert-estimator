@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 import { db } from "./db.js";
 import {
   STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, PRIOR_FINISHES, DECK_STRUCTURES,
-  PERGOLA_GAZEBO_SIZES, CLEANING_PRICING, MATERIALS_PRICING, computeDeckEstimate,
+  PERGOLA_GAZEBO_SIZES, SANDING_CONDITIONS, CLEANING_PRICING, MATERIALS_PRICING, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
 import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
@@ -88,6 +88,7 @@ app.get("/api/pricing/deck", requireAuth, (req, res) => {
     prior_finishes: PRIOR_FINISHES,
     structures: DECK_STRUCTURES,
     pergola_gazebo_sizes: PERGOLA_GAZEBO_SIZES,
+    sanding_conditions: SANDING_CONDITIONS,
     cleaning_pricing: CLEANING_PRICING,
     materials_pricing: MATERIALS_PRICING,
   });
@@ -187,6 +188,10 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
         chicago_surcharge: !!row.chicago_surcharge,
         light_clean: !!row.light_clean,
         pergola_gazebo_size: row.pergola_gazebo_size,
+        sanding_condition: row.sanding_condition,
+        vertical_sanding: !!row.vertical_sanding,
+        vertical_length: row.vertical_length,
+        vertical_height: row.vertical_height,
       };
     })(),
     labels: {
@@ -194,6 +199,7 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
       deck_location: (DECK_LOCATIONS[row.deck_location] || {}).label,
       prior_finish: (PRIOR_FINISHES[row.prior_finish] || {}).label,
       pergola_gazebo_size: (PERGOLA_GAZEBO_SIZES[row.pergola_gazebo_size] || {}).label,
+      sanding: (SANDING_CONDITIONS[row.sanding_condition] || {}).label,
       structures: (() => {
         let s = [];
         try { s = JSON.parse(row.structures || "[]"); } catch (_) {}
@@ -258,6 +264,11 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const chicago_surcharge = b.chicago_surcharge ? 1 : 0;
     const light_clean = b.light_clean ? 1 : 0;
     const pergola_gazebo_size = (b.pergola_gazebo_size || "").trim() || null;
+    // Sanding inputs
+    const sanding_condition = (b.sanding_condition || "").trim() || null;
+    const vertical_sanding = b.vertical_sanding ? 1 : 0;
+    const vertical_length = b.vertical_length ? parseFloat(b.vertical_length) : 0;
+    const vertical_height = b.vertical_height ? parseFloat(b.vertical_height) : 0;
     let extras = [];
     try { extras = b.extra_items ? JSON.parse(b.extra_items) : []; } catch (_) { extras = []; }
     let structuresIn = [];
@@ -271,6 +282,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     if (deck_location && !DECK_LOCATIONS[deck_location]) return res.status(400).json({ error: "Invalid deck location" });
     if (prior_finish && !PRIOR_FINISHES[prior_finish]) return res.status(400).json({ error: "Invalid prior finish" });
     if (pergola_gazebo_size && !PERGOLA_GAZEBO_SIZES[pergola_gazebo_size]) return res.status(400).json({ error: "Invalid pergola/gazebo size" });
+    if (sanding_condition && !SANDING_CONDITIONS[sanding_condition]) return res.status(400).json({ error: "Invalid sanding condition" });
     if (!Number.isFinite(surface_sqft) || surface_sqft <= 0) return res.status(400).json({ error: "Invalid square footage" });
     if (!Number.isFinite(railing_lf) || railing_lf < 0) return res.status(400).json({ error: "Invalid railing length" });
     if (!Number.isFinite(stairs_count) || stairs_count < 0) return res.status(400).json({ error: "Invalid stair count" });
@@ -289,6 +301,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const breakdown = computeDeckEstimate({
       cleaning_enabled, surface_sqft, has_railing, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
+      sanding_condition, vertical_sanding, vertical_length, vertical_height,
       discount, extra_items: cleanExtras,
     });
 
@@ -299,14 +312,16 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         surface_sqft, steps_included, has_railing, railing_lf, stairs_count,
         structures, structures_other, prior_finish,
         cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
+        sanding_condition, vertical_sanding, vertical_length, vertical_height,
         extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
       surface_sqft, steps_included, has_railing, railing_lf, stairs_count,
       JSON.stringify(structures), structures_other, prior_finish,
       cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size,
+      sanding_condition, vertical_sanding, vertical_length, vertical_height,
       JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown), source_hcp_estimate_id
     );
     const estimateId = result.lastInsertRowid;

@@ -53,6 +53,15 @@ export const PERGOLA_GAZEBO_SIZES = {
   s30x25: { label: "30×25", price: 750 },
 };
 
+// Sanding (labor) by deck condition. rate = $/sq ft on the horizontal area;
+// min = minimum labor charge; supply = which sanding supply cost also applies.
+export const SANDING_CONDITIONS = {
+  never_finished: { label: "Deck never finished",       rate: 0.75, min: 150, supply: "never" },
+  oil_before:     { label: "Sealed with oil before",    rate: 1.25, min: 300, supply: "prior" },
+  latex_before:   { label: "Stained with latex before", rate: 2.00, min: 0,   supply: "prior" },
+  stain_removal:  { label: "Stain removal to bare wood", rate: 4.00, min: 0,   supply: "removal" },
+};
+
 // ---------------------------------------------------------------------------
 // CLEANING (power washing) RATE TABLE — EDIT THESE NUMBERS.
 // sq ft tiers (index): 0 = under 200, 1 = 200–400, 2 = 400–600, 3 = above 600.
@@ -174,31 +183,55 @@ export function computeMaterials(input) {
     items.push({ id: "stain_supplies", label: ss.label, cost: proratedSupply(ss, combined) });
   }
 
-  // Sanding (needs sanding choice: never | prior | removal). Horizontals only.
-  const sandKey = { never: "sand_never", prior: "sand_prior", removal: "sand_removal" }[input.sanding];
-  if (sandKey) {
-    const s = MATERIALS_PRICING.supplies[sandKey];
-    items.push({ id: sandKey, label: s.label, cost: proratedSupply(s, horizontal) });
+  // Sanding supply (needs a sanding condition). Horizontals only.
+  const sandCond = SANDING_CONDITIONS[input.sanding_condition];
+  if (sandCond && sandCond.supply) {
+    const key = { never: "sand_never", prior: "sand_prior", removal: "sand_removal" }[sandCond.supply];
+    const s = MATERIALS_PRICING.supplies[key];
+    if (s) items.push({ id: key, label: s.label, cost: proratedSupply(s, horizontal) });
   }
 
   const total = round2(items.reduce((s, x) => s + x.cost, 0));
   return { items, total };
 }
 
+// Sanding labor. Horizontal = chosen rate × surface sq ft (floored at the min).
+// Verticals (railings) = same chosen rate × (length × height). Chicago +10%.
+export function computeSanding(input) {
+  const cond = SANDING_CONDITIONS[input.sanding_condition];
+  if (!cond) return { enabled: false, total: 0 };
+  const horizontal = Number(input.surface_sqft) || 0;
+  const horizLabor = Math.max(cond.min || 0, cond.rate * horizontal);
+  let vertical_sqft = 0, vertLabor = 0;
+  if (input.vertical_sanding) {
+    vertical_sqft = (Number(input.vertical_length) || 0) * (Number(input.vertical_height) || 0);
+    vertLabor = cond.rate * vertical_sqft;
+  }
+  let total = horizLabor + vertLabor, surcharge = 0;
+  if (input.chicago_surcharge) { surcharge = total * CLEANING_PRICING.chicago_surcharge; total += surcharge; }
+  return {
+    enabled: true, condition: input.sanding_condition, rate: cond.rate,
+    horizontal_labor: round2(horizLabor), vertical_sqft, vertical_labor: round2(vertLabor),
+    surcharge: round2(surcharge), total: round2(total),
+  };
+}
+
 // Build the full deck estimate breakdown (frozen into pricing_snapshot at save).
 export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
+  const sanding = computeSanding(input);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
   const extras = Array.isArray(input.extra_items) ? input.extra_items : [];
   const extrasTotal = extras.reduce((s, x) => s + (parseFloat(x.price) || 0), 0);
 
-  const subtotal = cleaning.total + materials.total + extrasTotal;
+  const subtotal = cleaning.total + sanding.total + materials.total + extrasTotal;
   const total = Math.max(0, subtotal - discount);
 
   return {
     cleaning,
+    sanding,
     materials,
     extras: extrasTotal,
     extras_list: extras,

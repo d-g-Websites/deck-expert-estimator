@@ -142,6 +142,21 @@
     </section>
 
     <section class="card">
+      <h2>Sanding (prep)</h2>
+      <div class="field"><label for="sanding_condition">Deck condition / sanding type</label><select id="sanding_condition"></select></div>
+      <div class="toggle">
+        <label class="check-line"><input type="checkbox" id="vertical_sanding"> Sanding needed for vertical surfaces (railings)</label>
+        <div id="verticalWrap" class="conditional" style="display:none">
+          <div class="grid-2">
+            <div class="field"><label for="vertical_length">Length (ft)</label><input type="number" id="vertical_length" min="0" step="0.1" inputmode="decimal" placeholder="0"></div>
+            <div class="field"><label for="vertical_height">Height (ft)</label><input type="number" id="vertical_height" min="0" step="0.1" inputmode="decimal" placeholder="0"></div>
+          </div>
+          <div class="hint" id="verticalSqftHint" style="margin-top:0.4rem"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Extra services</h2>
       <div id="extraItems"></div>
       <button type="button" id="addExtra" class="btn secondary">+ Add line item</button>
@@ -156,6 +171,8 @@
       <h2>Total</h2>
       <div class="total-row" id="cleaningRow"><span id="cleaningLabel">Cleaning</span><span id="cleaningTotal">$0.00</span></div>
       <div class="total-row" id="pergolaRow" style="display:none"><span>Pergola/gazebo cleaning</span><span id="pergolaTotal">$0.00</span></div>
+      <div class="total-row" id="sandingHRow" style="display:none"><span id="sandingHLabel">Sanding</span><span id="sandingHTotal">$0.00</span></div>
+      <div class="total-row" id="sandingVRow" style="display:none"><span id="sandingVLabel">Sanding — verticals</span><span id="sandingVTotal">$0.00</span></div>
       <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
       <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
@@ -186,10 +203,12 @@ const els = {
   wood: $('wood_type'), location: $('deck_location'), prior: $('prior_finish'),
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
   levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
+  sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
-let CLEANING = null, PGSIZES = null, MATERIALS = null;
+const verticalSanding = $('vertical_sanding');
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null;
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
@@ -225,14 +244,24 @@ const renderError = document.getElementById('renderError');
 const renderActions = document.getElementById('renderActions');
 
 fetch('/api/pricing/deck').then(r => r.json()).then(data => {
-  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing;
+  CLEANING = data.cleaning_pricing; PGSIZES = data.pergola_gazebo_sizes; MATERIALS = data.materials_pricing; SANDING = data.sanding_conditions;
   fillSelect(els.wood, data.wood_types);
   fillSelect(els.location, data.deck_locations, 'Select…');
   fillSelect(els.prior, data.prior_finishes, 'Select…');
   fillPergolaSizes(data.pergola_gazebo_sizes);
+  fillSanding(data.sanding_conditions);
   buildStructures(data.structures);
   updateTotal();
 });
+function fillSanding(obj) {
+  els.sandingCond.innerHTML = '<option value="">No sanding</option>';
+  for (const [id, info] of Object.entries(obj)) {
+    const o = document.createElement('option'); o.value = id;
+    o.textContent = info.label + ' ($' + info.rate.toFixed(2) + '/sq ft' + (info.min ? ', min $' + info.min : '') + ')';
+    els.sandingCond.appendChild(o);
+  }
+  els.sandingCond.addEventListener('change', updateTotal);
+}
 function fillPergolaSizes(obj) {
   els.pergola.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
@@ -333,13 +362,26 @@ function computeMaterials() {
   return { total: Math.round(total * 100) / 100 };
 }
 
+function computeSanding() {
+  const cond = SANDING && SANDING[els.sandingCond.value];
+  if (!cond) return { enabled: false, horizontal: 0, vertical: 0, surcharge: 0, total: 0, vsqft: 0, label: '' };
+  const horizontal = num(els.sqft);
+  const hLabor = Math.max(cond.min || 0, cond.rate * horizontal);
+  let vsqft = 0, vLabor = 0;
+  if (verticalSanding.checked) { vsqft = num(els.vlen) * num(els.vhgt); vLabor = cond.rate * vsqft; }
+  let total = hLabor + vLabor, surcharge = 0;
+  if (chicago.checked) { surcharge = total * CLEANING.chicago_surcharge; total += surcharge; }
+  return { enabled: true, label: cond.label, horizontal: hLabor, vertical: vLabor, vsqft, surcharge, total };
+}
+
 function updateTotal() {
   if (!CLEANING) return;
   const c = computeCleaning();
+  const s = computeSanding();
   const m = computeMaterials();
-  const extras = getExtras().reduce((s, x) => s + x.price, 0);
+  const extras = getExtras().reduce((acc, x) => acc + x.price, 0);
   const discount = num(els.discount);
-  const subtotal = c.total + m.total + extras;
+  const subtotal = c.total + s.total + m.total + extras;
   const grand = Math.max(0, subtotal - discount);
 
   document.getElementById('cleaningRow').style.display = c.enabled ? 'flex' : 'none';
@@ -347,8 +389,15 @@ function updateTotal() {
   document.getElementById('cleaningTotal').textContent = fmt(c.deck_wash);
   document.getElementById('pergolaRow').style.display = c.pergola > 0 ? 'flex' : 'none';
   document.getElementById('pergolaTotal').textContent = fmt(c.pergola);
-  document.getElementById('chicagoRow').style.display = c.surcharge > 0 ? 'flex' : 'none';
-  document.getElementById('chicagoTotal').textContent = fmt(c.surcharge);
+  document.getElementById('sandingHRow').style.display = (s.enabled && s.horizontal > 0) ? 'flex' : 'none';
+  document.getElementById('sandingHLabel').textContent = 'Sanding (' + s.label + ')';
+  document.getElementById('sandingHTotal').textContent = fmt(s.horizontal);
+  document.getElementById('sandingVRow').style.display = s.vertical > 0 ? 'flex' : 'none';
+  document.getElementById('sandingVTotal').textContent = fmt(s.vertical);
+  const surcharge = c.surcharge + s.surcharge;
+  document.getElementById('chicagoRow').style.display = surcharge > 0 ? 'flex' : 'none';
+  document.getElementById('chicagoTotal').textContent = fmt(surcharge);
+  document.getElementById('verticalSqftHint').textContent = verticalSanding.checked ? ('Vertical area: ' + (num(els.vlen) * num(els.vhgt)).toFixed(0) + ' sq ft') : '';
   document.getElementById('materialsRow').style.display = m.total > 0 ? 'flex' : 'none';
   document.getElementById('materialsTotal').textContent = fmt(m.total);
   document.getElementById('extrasRow').style.display = extras > 0 ? 'flex' : 'none';
@@ -358,13 +407,18 @@ function updateTotal() {
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.discount, els.levels].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.discount, els.levels, els.vlen, els.vhgt].forEach(el => el.addEventListener('input', updateTotal));
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updatePergolaVisibility(); updateTotal();
 });
 chicago.addEventListener('change', updateTotal);
 lightClean.addEventListener('change', updateTotal);
+verticalSanding.addEventListener('change', () => {
+  document.getElementById('verticalWrap').style.display = verticalSanding.checked ? 'block' : 'none';
+  if (!verticalSanding.checked) { els.vlen.value = ''; els.vhgt.value = ''; }
+  updateTotal();
+});
 
 // --- Extra line items ---
 const extraItemsDiv = document.getElementById('extraItems');
@@ -474,6 +528,10 @@ form.addEventListener('submit', async (e) => {
   fd.append('chicago_surcharge', chicago.checked ? '1' : '');
   fd.append('light_clean', lightClean.checked ? '1' : '');
   fd.append('pergola_gazebo_size', els.pergola.value);
+  fd.append('sanding_condition', els.sandingCond.value);
+  fd.append('vertical_sanding', verticalSanding.checked ? '1' : '');
+  fd.append('vertical_length', verticalSanding.checked ? String(num(els.vlen)) : '0');
+  fd.append('vertical_height', verticalSanding.checked ? String(num(els.vhgt)) : '0');
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
