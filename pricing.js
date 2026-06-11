@@ -410,10 +410,9 @@ export const REPAIR_ITEMS = {
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20, labor: { ground: 80, rooftop: 120 } },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
-  stair_stringer:  { label: "Replace stair stringer", mode: "options", options: {
-                       up_to_8: { label: "Up to 8 steps",     price: 200 },
-                       over_8:  { label: "8 steps or more",   price: 300 },
-                     } },
+  stair_stringer:  { label: "Replace stair stringer",        unit: "each",    labor: { ground: 200, rooftop: 200 },
+                       // 8 steps or more bumps the labor rate
+                       toggle: { id: "over_8_steps", label: "8 steps or more", labor: { ground: 300, rooftop: 300 } } },
   concrete_footer: { label: "Concrete footer (no digging out old footer)", mode: "qty",
                        supplies_per_unit: 25,
                        // labor per piece, tiered by how many footers are poured
