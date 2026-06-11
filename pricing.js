@@ -401,7 +401,7 @@ export const REPAIR_ITEMS = {
                        // optional per-item toggle: overrides the labor rate when checked
                        toggle: { id: "routed_handrail", label: "Routed handrail", labor: { ground: 150, rooftop: 150 } } },
   upper_lower_rail:{ label: "Replace upper or lower rail",    unit: "rail",    labor: { ground: 120, rooftop: 120 } },
-  baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
+  baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8, labor: { ground: 10, rooftop: 10 } },
   post:            { label: "Replace post",                  unit: "each",    price: 75 },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
