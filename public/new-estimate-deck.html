@@ -249,6 +249,12 @@
       <div id="repairsList"></div>
     </div>
     <div class="card">
+      <h2>Debris removal</h2>
+      <div class="hint" style="margin-bottom:0.75rem">Flat charge for hauling away debris. Leave blank for none.</div>
+      <div class="field"><label for="debris_removal">Charge ($)</label>
+        <input id="debris_removal" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+    </div>
+    <div class="card">
       <h2>Notes</h2>
       <div class="field"><textarea id="repairs_notes" rows="3" placeholder="Any details about the repairs…" style="width:100%;padding:0.75rem;border:1px solid var(--line);border-radius:var(--radius);font-family:inherit;font-size:1rem;color:var(--dark)"></textarea></div>
     </div>
@@ -425,7 +431,9 @@ function computeRepairs() {
       if (board) total += board.price * ln.qty;
     }
   }
-  return { total: Math.round(total * 100) / 100, count };
+  const debris = parseFloat($('debris_removal').value) || 0;
+  if (debris > 0) total += debris;
+  return { total: Math.round(total * 100) / 100, count, debris };
 }
 function updateRepairsSummary() {
   const r = computeRepairs();
@@ -438,6 +446,7 @@ document.getElementById('openRepairs').addEventListener('click', () => { documen
 function closeRepairs() { document.getElementById('repairsScreen').style.display = 'none'; updateRepairsSummary(); updateTotal(); window.scrollTo(0, 0); }
 document.getElementById('repairsBack').addEventListener('click', (e) => { e.preventDefault(); closeRepairs(); });
 document.getElementById('repairsDone').addEventListener('click', closeRepairs);
+document.getElementById('debris_removal').addEventListener('input', updateRepairsSummary);
 function fillStainProcesses(obj) {
   els.stainProcess.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
@@ -807,6 +816,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('staining_multiplier', String(adjMult(els.stainMult)));
   fd.append('repairs', JSON.stringify(getRepairs()));
   fd.append('repairs_notes', document.getElementById('repairs_notes').value.trim());
+  fd.append('debris_removal', String(num($('debris_removal'))));
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));

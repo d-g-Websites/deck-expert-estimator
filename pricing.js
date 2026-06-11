@@ -413,7 +413,8 @@ export const REPAIR_MATERIALS = ["cedar", "pressure_treated", "ipe", "engineered
 
 // repairs: [{ item_id, lines: [{ material, board, qty }] }]
 // Cost per line = unit_price (from the LUMBER catalog) × qty.
-export function computeRepairs(repairs) {
+// debris = flat debris-removal charge entered by the tech, added to the total.
+export function computeRepairs(repairs, debris = 0) {
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
   for (const r of list) {
@@ -436,8 +437,9 @@ export function computeRepairs(repairs) {
       });
     }
   }
-  const total = round2(items.reduce((s, x) => s + x.cost, 0));
-  return { items, total };
+  const debris_removal = Math.max(0, Number(debris) || 0);
+  const total = round2(items.reduce((s, x) => s + x.cost, 0) + debris_removal);
+  return { items, debris_removal, total };
 }
 
 // Build the full deck estimate breakdown (frozen into pricing_snapshot at save).
@@ -445,7 +447,7 @@ export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
   const staining = computeStaining(input);
-  const repairs = computeRepairs(input.repairs);
+  const repairs = computeRepairs(input.repairs, input.debris_removal);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 

@@ -312,6 +312,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       }))
       .filter(r => r.lines.length > 0);
     const repairs_notes = (b.repairs_notes || "").trim() || null;
+    const debris_removal = Math.max(0, parseFloat(b.debris_removal) || 0);
     let extras = [];
     try { extras = b.extra_items ? JSON.parse(b.extra_items) : []; } catch (_) { extras = []; }
     let structuresIn = [];
@@ -348,7 +349,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
       staining_enabled, stain_process, stain_customer_supplied, vertical_sqft: stain_vertical_sqft,
       cleaning_multiplier, sanding_multiplier, staining_multiplier,
-      repairs,
+      repairs, debris_removal,
       discount, extra_items: cleanExtras,
     });
 
@@ -361,9 +362,9 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size, cleaning_multiplier,
         sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
         staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft, staining_multiplier,
-        repairs, repairs_notes,
+        repairs, repairs_notes, debris_removal,
         extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
@@ -372,7 +373,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size, cleaning_multiplier,
       sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
       staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft, staining_multiplier,
-      JSON.stringify(repairs), repairs_notes,
+      JSON.stringify(repairs), repairs_notes, debris_removal,
       JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown), source_hcp_estimate_id
     );
     const estimateId = result.lastInsertRowid;

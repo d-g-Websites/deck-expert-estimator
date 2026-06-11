@@ -68,6 +68,7 @@ db.exec(`
     -- Repairs / replacement (JSON array of {item_id, qty}) + notes
     repairs TEXT NOT NULL DEFAULT '[]',
     repairs_notes TEXT,
+    debris_removal REAL NOT NULL DEFAULT 0,
 
     -- Legacy columns (no longer collected; kept for older rows)
     service_type TEXT,
@@ -136,6 +137,7 @@ const MIGRATIONS = {
   staining_multiplier: "REAL DEFAULT 1",
   repairs: "TEXT NOT NULL DEFAULT '[]'",
   repairs_notes: "TEXT",
+  debris_removal: "REAL NOT NULL DEFAULT 0",
 };
 const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
 for (const [name, ddl] of Object.entries(MIGRATIONS)) {
