@@ -397,7 +397,7 @@ export const LUMBER = {
 // ---------------------------------------------------------------------------
 export const REPAIR_ITEMS = {
   deck_board:      { label: "Replace deck board",            unit: "board",   price: 25, labor: { ground: 80, rooftop: 120 } },
-  railing_section: { label: "Replace railing section",       unit: "lin ft",  price: 30 },
+  railing_section: { label: "Replace railing top section",   unit: "section", price: 30, labor: { ground: 80, rooftop: 120 } },
   baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
   post:            { label: "Replace post",                  unit: "each",    price: 75 },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
