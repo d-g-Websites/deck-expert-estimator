@@ -365,6 +365,7 @@ export const LUMBER = {
       post_4x4x8:    { label: "4x4x8 post",  price: 25 },
       post_6x6x12:   { label: "6x6x12 post", price: 80 },
       post_6x6x8:    { label: "6x6x8 post",  price: 60 },
+      baluster:      { label: "Baluster / spindle", price: 5 },
     },
   },
   cedar: {
@@ -385,6 +386,7 @@ export const LUMBER = {
       post_4x4x8:    { label: "4x4x8 post",  price: 60 },
       post_6x6x12:   { label: "6x6x12 post", price: 350 },
       post_6x6x8:    { label: "6x6x8 post",  price: 250 },
+      baluster:      { label: "Baluster / spindle", price: 10 },
     },
   },
 };
