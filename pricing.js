@@ -407,9 +407,9 @@ export const REPAIR_ITEMS = {
                        // over 8 ft bumps the labor rate
                        toggle: { id: "over_8ft", label: "Over 8 feet", labor: { ground: 300, rooftop: 350 } } },
   support_post_ml: { label: "Replace support post — multilevel deck", unit: "each", custom_labor: true },
+  stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20, labor: { ground: 80, rooftop: 120 } },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
-  stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
   stair_stringer:  { label: "Replace stair stringer", mode: "options", options: {
                        up_to_8: { label: "Up to 8 steps",     price: 200 },
                        over_8:  { label: "8 steps or more",   price: 300 },
