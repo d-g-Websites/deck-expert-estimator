@@ -475,7 +475,6 @@ function getRepairs() {
 }
 function computeRepairs() {
   let count = 0, total = 0;
-  const rooftop = els.location.value === 'rooftop';
   for (const r of getRepairs()) {
     const def = REPAIRS && REPAIRS[r.item_id];
     const mode = (def && def.mode) || 'material';
@@ -489,9 +488,7 @@ function computeRepairs() {
       } else {
         const cat = LUMBER && LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
-        const matPrice = board ? board.price : 0;
-        const laborRate = (def && def.labor) ? (rooftop ? def.labor.rooftop : def.labor.ground) : 0;
-        total += (matPrice + laborRate) * ln.qty;
+        if (board) total += board.price * ln.qty;
       }
     }
   }
@@ -738,7 +735,6 @@ function updateTotal() {
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
 [els.sqft, els.discount, els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
-els.location.addEventListener('change', updateTotal);
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updateTotal();

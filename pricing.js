@@ -395,17 +395,14 @@ export const LUMBER = {
 // REPAIRS / REPLACEMENT catalog — generic items (placeholder prices). The lumber
 // catalog above (LUMBER) is kept for later use elsewhere.
 // ---------------------------------------------------------------------------
-// Material-mode items carry a per-item labor rate (added on top of material cost).
-// labor: { ground, rooftop } — picked from the deck location. Material cost is the
-// chosen board's price × qty (from the LUMBER catalog); the wood/board pickers stay.
 export const REPAIR_ITEMS = {
-  deck_board:       { label: "Replace decking board / stair board / handrail top", labor: { ground: 80,  rooftop: 120 } },
-  upper_lower_rail: { label: "Lower or upper rail",                  labor: { ground: 120, rooftop: 120 } },
-  routed_handrail:  { label: "Routed handrail",                      labor: { ground: 150, rooftop: 150 } },
-  railing_post:     { label: "Railing post (under 8 ft)",            labor: { ground: 200, rooftop: 250 } },
-  support_post_u8:  { label: "Structural support post (under 8 ft)", labor: { ground: 250, rooftop: 300 } },
-  support_post_o8:  { label: "Structural support post (above 8 ft)", labor: { ground: 300, rooftop: 350 } },
-  baluster:         { label: "Baluster / spindle",                  labor: { ground: 10,  rooftop: 10 } },
+  deck_board:      { label: "Replace deck board",            unit: "board",   price: 25 },
+  railing_section: { label: "Replace railing section",       unit: "lin ft",  price: 30 },
+  baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
+  post:            { label: "Replace post",                  unit: "each",    price: 75 },
+  joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
+  beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
+  stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
   stair_stringer:  { label: "Replace stair stringer", mode: "options", options: {
                        up_to_8: { label: "Up to 8 steps",     price: 200 },
                        over_8:  { label: "8 steps or more",   price: 300 },
@@ -418,6 +415,8 @@ export const REPAIR_ITEMS = {
                          { max: 5,  price: 300 },   // 2–5 footers
                          { max: 15, price: 230 },   // 6–15 footers
                        ] },
+  fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
+  hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
 };
 
 // Wood/material options selectable per repair item (captured for now; pricing later).
@@ -431,13 +430,11 @@ export function footerRate(tiers, qty) {
 }
 
 // repairs: [{ item_id, lines: [...] }]. Line shape depends on the item's mode:
-//   material (default): { material, board, qty } → board price × qty + labor × qty
+//   material (default): { material, board, qty } → LUMBER unit price × qty
 //   options:            { option, qty }          → option.price × qty
 //   qty:                { qty }                  → tiered labor × qty + supplies × qty
-// location = deck location ('above_ground' | 'rooftop') — picks the labor column.
 // debris = flat debris-removal charge entered by the tech, added to the total.
-export function computeRepairs(repairs, debris = 0, location = "above_ground") {
-  const rooftop = location === "rooftop";
+export function computeRepairs(repairs, debris = 0) {
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
   for (const r of list) {
@@ -453,8 +450,7 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: null, board: null, board_label: opt.label,
-          unit_price: opt.price, labor_rate: opt.price, material_price: 0, qty,
-          cost: round2(opt.price * qty),
+          unit_price: opt.price, qty, cost: round2(opt.price * qty),
         });
       } else if (mode === "qty") {
         const rate = footerRate(def.tiers, qty);
@@ -462,24 +458,20 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: null, board: null, board_label: null,
-          unit_price: rate, labor_rate: rate, material_price: 0, qty,
-          cost: round2(rate * qty + supplies),
+          unit_price: rate, qty, cost: round2(rate * qty + supplies),
         });
       } else {
         const cat = LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
-        const material_price = board ? board.price : 0;
-        const labor_rate = def.labor ? (rooftop ? def.labor.rooftop : def.labor.ground) : 0;
+        const unit_price = board ? board.price : 0;
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: ln.material || null,
           board: ln.board || null,
           board_label: board ? board.label : null,
-          material_price,
-          labor_rate,
-          unit_price: material_price + labor_rate,
+          unit_price,
           qty,
-          cost: round2((material_price + labor_rate) * qty),
+          cost: round2(unit_price * qty),
         });
       }
     }
@@ -494,7 +486,7 @@ export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
   const staining = computeStaining(input);
-  const repairs = computeRepairs(input.repairs, input.debris_removal, input.deck_location);
+  const repairs = computeRepairs(input.repairs, input.debris_removal);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
