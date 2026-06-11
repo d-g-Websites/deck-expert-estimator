@@ -357,7 +357,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     }
 
     const breakdown = computeDeckEstimate({
-      wood_type, cleaning_enabled, surface_sqft, has_railing, has_metal_spindles, multilevel_levels,
+      wood_type, deck_location, cleaning_enabled, surface_sqft, has_railing, has_metal_spindles, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
       staining_enabled, stain_process, stain_customer_supplied, vertical_sqft: stain_vertical_sqft,

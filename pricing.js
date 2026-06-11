@@ -396,7 +396,7 @@ export const LUMBER = {
 // catalog above (LUMBER) is kept for later use elsewhere.
 // ---------------------------------------------------------------------------
 export const REPAIR_ITEMS = {
-  deck_board:      { label: "Replace deck board",            unit: "board",   price: 25 },
+  deck_board:      { label: "Replace deck board",            unit: "board",   price: 25, labor: { ground: 80, rooftop: 120 } },
   railing_section: { label: "Replace railing section",       unit: "lin ft",  price: 30 },
   baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
   post:            { label: "Replace post",                  unit: "each",    price: 75 },
@@ -430,11 +430,13 @@ export function footerRate(tiers, qty) {
 }
 
 // repairs: [{ item_id, lines: [...] }]. Line shape depends on the item's mode:
-//   material (default): { material, board, qty } → LUMBER unit price × qty
+//   material (default): { material, board, qty } → board price × qty (+ labor × qty if the item has a labor rate)
 //   options:            { option, qty }          → option.price × qty
 //   qty:                { qty }                  → tiered labor × qty + supplies × qty
+// location = deck location ('above_ground' | 'rooftop') — picks the labor column.
 // debris = flat debris-removal charge entered by the tech, added to the total.
-export function computeRepairs(repairs, debris = 0) {
+export function computeRepairs(repairs, debris = 0, location = "above_ground") {
+  const rooftop = location === "rooftop";
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
   for (const r of list) {
@@ -463,15 +465,18 @@ export function computeRepairs(repairs, debris = 0) {
       } else {
         const cat = LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
-        const unit_price = board ? board.price : 0;
+        const material_price = board ? board.price : 0;
+        const labor_rate = def.labor ? (rooftop ? def.labor.rooftop : def.labor.ground) : 0;
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: ln.material || null,
           board: ln.board || null,
           board_label: board ? board.label : null,
-          unit_price,
+          material_price,
+          labor_rate,
+          unit_price: material_price + labor_rate,
           qty,
-          cost: round2(unit_price * qty),
+          cost: round2((material_price + labor_rate) * qty),
         });
       }
     }
@@ -486,7 +491,7 @@ export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
   const staining = computeStaining(input);
-  const repairs = computeRepairs(input.repairs, input.debris_removal);
+  const repairs = computeRepairs(input.repairs, input.debris_removal, input.deck_location);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
