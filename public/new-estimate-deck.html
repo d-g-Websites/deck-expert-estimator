@@ -75,7 +75,10 @@
     </section>
 
     <section class="card">
-      <h2>Customer info</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <h2 style="margin:0">Customer info</h2>
+        <button type="button" id="clearCustomer" class="btn secondary" style="padding:0.4rem 0.85rem;font-size:0.85rem">Clear</button>
+      </div>
       <div id="prefillNote" class="notice" style="display:none;margin-bottom:1rem"></div>
       <div class="field"><label for="customer_name">Name *</label><input type="text" id="customer_name" required autocomplete="name"></div>
       <div class="field"><label for="customer_phone">Phone</label><input type="tel" id="customer_phone" autocomplete="tel"></div>
@@ -282,6 +285,14 @@ let sourceHcpEstimateId = null;
     }
   } catch (_) {}
 })();
+
+document.getElementById('clearCustomer').addEventListener('click', () => {
+  ['customer_name', 'customer_phone', 'customer_email', 'customer_address'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('prefillNote').style.display = 'none';
+  sourceHcpEstimateId = null;
+  sessionStorage.removeItem('estimate.prefill');
+  document.getElementById('customer_name').focus();
+});
 
 // Photos / render state
 const photos = [];
