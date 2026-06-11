@@ -198,14 +198,9 @@
 
     <section class="card total-card">
       <h2>Total</h2>
-      <div class="total-row" id="cleaningRow"><span id="cleaningLabel">Cleaning</span><span id="cleaningTotal">$0.00</span></div>
-      <div class="total-row" id="pergolaRow" style="display:none"><span>Pergola/gazebo cleaning</span><span id="pergolaTotal">$0.00</span></div>
-      <div class="total-row" id="sandingHRow" style="display:none"><span id="sandingHLabel">Sanding</span><span id="sandingHTotal">$0.00</span></div>
-      <div class="total-row" id="sandingVRow" style="display:none"><span id="sandingVLabel">Sanding — verticals</span><span id="sandingVTotal">$0.00</span></div>
+      <div class="total-row" id="cleaningRow" style="display:none"><span>Cleaning</span><span id="cleaningTotal">$0.00</span></div>
+      <div class="total-row" id="sandingRow" style="display:none"><span>Sanding</span><span id="sandingTotal">$0.00</span></div>
       <div class="total-row" id="stainingRow" style="display:none"><span id="stainingLabel">Staining</span><span id="stainingTotal">$0.00</span></div>
-      <div class="total-row" id="stainPergolaRow" style="display:none"><span>Pergola/gazebo staining</span><span id="stainPergolaTotal">$0.00</span></div>
-      <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
-      <div class="total-row" id="metalRow" style="display:none"><span>Metal spindles (+10%)</span><span id="metalTotal">$0.00</span></div>
       <div class="total-row" id="repairsRow" style="display:none"><span>Repairs / replacement</span><span id="repairsRowTotal">$0.00</span></div>
       <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
@@ -544,34 +539,18 @@ function updateTotal() {
   const subtotal = c.total + s.total + st.total + rp.total + m.total + extras;
   const grand = Math.max(0, subtotal - discount);
 
-  document.getElementById('cleaningRow').style.display = c.enabled ? 'flex' : 'none';
-  document.getElementById('cleaningLabel').textContent = 'Cleaning (deck wash)';
-  document.getElementById('cleaningTotal').textContent = fmt(c.deck_wash);
-  document.getElementById('pergolaRow').style.display = c.pergola > 0 ? 'flex' : 'none';
-  document.getElementById('pergolaTotal').textContent = fmt(c.pergola);
   document.getElementById('sandingWoodNote').style.display = noHorizSanding() ? 'block' : 'none';
-  document.getElementById('sandingHRow').style.display = (s.enabled && s.horizontal > 0) ? 'flex' : 'none';
-  document.getElementById('sandingHLabel').textContent = 'Sanding (' + s.label + ')';
-  document.getElementById('sandingHTotal').textContent = fmt(s.horizontal);
-  document.getElementById('sandingVRow').style.display = s.vertical > 0 ? 'flex' : 'none';
-  document.getElementById('sandingVTotal').textContent = fmt(s.vertical);
-  document.getElementById('stainingRow').style.display = (st.enabled && st.labor > 0) ? 'flex' : 'none';
-  document.getElementById('stainingLabel').textContent = 'Staining' + ((PROCESSES && PROCESSES[els.stainProcess.value]) ? ' (' + PROCESSES[els.stainProcess.value].label + ')' : '');
-  document.getElementById('stainingTotal').textContent = fmt(st.labor);
-  document.getElementById('stainPergolaRow').style.display = st.pergola > 0 ? 'flex' : 'none';
-  document.getElementById('stainPergolaTotal').textContent = fmt(st.pergola);
-  const surcharge = c.surcharge + s.surcharge + (st.chicago_surcharge || 0);
-  document.getElementById('chicagoRow').style.display = surcharge > 0 ? 'flex' : 'none';
-  document.getElementById('chicagoTotal').textContent = fmt(surcharge);
-  document.getElementById('metalRow').style.display = (st.metal_surcharge || 0) > 0 ? 'flex' : 'none';
-  document.getElementById('metalTotal').textContent = fmt(st.metal_surcharge || 0);
-  document.getElementById('repairsRow').style.display = rp.total > 0 ? 'flex' : 'none';
-  document.getElementById('repairsRowTotal').textContent = fmt(rp.total);
   document.getElementById('verticalSqftHint').textContent = verticalSanding.checked ? ('Vertical area: ' + (num(els.vlen) * num(els.vhgt)).toFixed(0) + ' sq ft') : '';
-  document.getElementById('materialsRow').style.display = m.total > 0 ? 'flex' : 'none';
-  document.getElementById('materialsTotal').textContent = fmt(m.total);
-  document.getElementById('extrasRow').style.display = extras > 0 ? 'flex' : 'none';
-  document.getElementById('extrasTotal').textContent = fmt(extras);
+
+  // One total per section — surcharges (Chicago, metal spindles) are folded in, not shown as lines.
+  const sr = (rowId, valId, val) => { document.getElementById(rowId).style.display = val > 0 ? 'flex' : 'none'; document.getElementById(valId).textContent = fmt(val); };
+  sr('cleaningRow', 'cleaningTotal', c.total);
+  sr('sandingRow', 'sandingTotal', s.total);
+  document.getElementById('stainingLabel').textContent = 'Staining' + ((PROCESSES && PROCESSES[els.stainProcess.value]) ? ' (' + PROCESSES[els.stainProcess.value].label + ')' : '');
+  sr('stainingRow', 'stainingTotal', st.total);
+  sr('repairsRow', 'repairsRowTotal', rp.total);
+  sr('materialsRow', 'materialsTotal', m.total);
+  sr('extrasRow', 'extrasTotal', extras);
   document.getElementById('subtotal').textContent = fmt(subtotal);
   document.getElementById('discountRow').style.display = discount > 0 ? 'flex' : 'none';
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
