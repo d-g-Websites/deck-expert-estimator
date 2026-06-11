@@ -275,8 +275,8 @@ export const STAINING_PRICING = {
 // key (null = no priced product). customer_choice processes show a description
 // field + "customer supplied" toggle.
 export const STAIN_PROCESSES = {
-  rymar_oil_seal:   { label: "Rymar — Oil-Based Seal",            labor: "rymar",          material: "rymar" },
-  bm_solid:         { label: "Benjamin Moore — Solid Stain",      labor: "benjamin_moore", material: "benjamin_moore" },
+  rymar_oil_seal:   { label: "Rymar — Oil-Based Seal",            labor: "rymar",          material: "rymar",          color_brand: "rymar" },
+  bm_solid:         { label: "Benjamin Moore — Solid Stain",      labor: "benjamin_moore", material: "benjamin_moore", color_brand: "benjamin_moore_solid" },
   ipe_oil:          { label: "IPE Oil",                           labor: "ipe_oil",        material: "ipe_oil" },
   customer_oil:     { label: "Customer Choice — Oil-Based Product",  labor: null, material: null, customer_choice: true },
   customer_acrylic: { label: "Customer Choice — Acrylic Product",    labor: null, material: null, customer_choice: true },

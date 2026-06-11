@@ -77,7 +77,7 @@ function render(e) {
     row('Structures', structuresStr) +
     row('Prior finish', e.labels.prior_finish || '—') +
     row('Sanding', e.labels.sanding ? (e.labels.sanding + (pr.vertical_sanding ? ' + verticals' : '')) : 'No') +
-    row('Staining', pr.staining_enabled ? ((e.labels.stain_process || 'Yes') + (pr.stain_custom_desc ? ' — ' + pr.stain_custom_desc : '') + (pr.stain_customer_supplied ? ' (customer supplied)' : '')) : 'No') +
+    row('Staining', pr.staining_enabled ? ((e.labels.stain_process || 'Yes') + (pr.stain_color ? ' · ' + pr.stain_color : '') + (pr.stain_custom_desc ? ' — ' + pr.stain_custom_desc : '') + (pr.stain_customer_supplied ? ' (customer supplied)' : '')) : 'No') +
     (pr.repairs_notes ? row('Repair notes', pr.repairs_notes) : ''));
 
   let extras = '';

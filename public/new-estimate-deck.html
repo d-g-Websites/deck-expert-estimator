@@ -175,6 +175,7 @@
       <label class="check-line" style="margin-bottom:0.25rem"><input type="checkbox" id="staining_enabled"> Stain / seal the deck</label>
       <div id="stainingOpts" style="display:none">
         <div class="field" style="margin-top:0.85rem"><label for="stain_process">Process</label><select id="stain_process"></select></div>
+        <div class="field" id="stainColorWrap" style="display:none"><label for="stain_color">Color</label><select id="stain_color"><option value="">TBD</option></select></div>
         <div id="customerChoiceWrap" style="display:none">
           <div class="field"><label for="stain_custom_desc">Custom product description</label><input type="text" id="stain_custom_desc" placeholder="Product name / details…"></div>
           <div class="toggle" style="border-top:none;padding-top:0"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_customer_supplied"> Customer supplied (remove product cost)</label></div>
@@ -259,11 +260,12 @@ const els = {
   sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
   stainProcess: $('stain_process'), stainCustomDesc: $('stain_custom_desc'),
   cleanMult: $('cleaning_pct'), sandMult: $('sanding_pct'), stainMult: $('staining_pct'),
+  stainColor: $('stain_color'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
 const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied'), metalSpindles = $('has_metal_spindles');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null;
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null, SWATCH_BRANDS = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -371,9 +373,22 @@ function fillStainProcesses(obj) {
   }
   els.stainProcess.addEventListener('change', () => { updateStainUI(); updateTotal(); });
 }
+function populateStainColors(colors) {
+  const cur = els.stainColor.value;
+  els.stainColor.innerHTML = '<option value="">TBD</option>';
+  for (const c of Object.values(colors)) {
+    const o = document.createElement('option'); o.value = c.name; o.textContent = c.name; els.stainColor.appendChild(o);
+  }
+  if (cur) els.stainColor.value = cur;
+}
 function updateStainUI() {
   const proc = PROCESSES && PROCESSES[els.stainProcess.value];
   document.getElementById('customerChoiceWrap').style.display = (proc && proc.customer_choice) ? 'block' : 'none';
+  // color dropdown for processes that have a color list (Rymar, BM Solid)
+  const wrap = document.getElementById('stainColorWrap');
+  const brand = (proc && proc.color_brand && SWATCH_BRANDS) ? SWATCH_BRANDS[proc.color_brand] : null;
+  if (brand && brand.colors) { populateStainColors(brand.colors); wrap.style.display = 'block'; }
+  else { wrap.style.display = 'none'; els.stainColor.value = ''; els.stainColor.innerHTML = '<option value="">TBD</option>'; }
   const note = document.getElementById('stainLaborNote');
   if (stainingEnabled.checked && proc && !proc.labor) {
     note.style.display = 'block';
@@ -399,13 +414,15 @@ function fillPergolaSizes(obj) {
   els.pergola.addEventListener('change', updateTotal);
 }
 fetch('/api/swatches').then(r => r.json()).then(data => {
-  for (const [bid, brand] of Object.entries(data.brands || {})) {
+  SWATCH_BRANDS = data.brands || {};
+  for (const [bid, brand] of Object.entries(SWATCH_BRANDS)) {
     const og = document.createElement('optgroup'); og.label = brand.name;
     for (const [id, c] of Object.entries(brand.colors)) {
       const o = document.createElement('option'); o.value = id; o.textContent = c.name; og.appendChild(o);
     }
     renderSwatch.appendChild(og);
   }
+  updateStainUI();
 });
 fetch('/api/config').then(r => r.json()).then(cfg => {
   if (!cfg.visualizer_enabled) { renderBtn.disabled = true; renderBtn.title = 'Set OPENAI_API_KEY to enable'; }
@@ -710,6 +727,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('vertical_height', verticalSanding.checked ? String(num(els.vhgt)) : '0');
   fd.append('staining_enabled', stainingEnabled.checked ? '1' : '');
   fd.append('stain_process', els.stainProcess.value);
+  fd.append('stain_color', els.stainColor.value);
   fd.append('stain_custom_desc', els.stainCustomDesc.value.trim());
   fd.append('stain_customer_supplied', stainCustomerSupplied.checked ? '1' : '');
   fd.append('cleaning_multiplier', String(adjMult(els.cleanMult)));

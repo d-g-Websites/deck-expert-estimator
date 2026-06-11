@@ -59,6 +59,7 @@ db.exec(`
     -- Staining / sealing inputs
     staining_enabled INTEGER NOT NULL DEFAULT 0,
     stain_process TEXT,
+    stain_color TEXT,
     stain_custom_desc TEXT,
     stain_customer_supplied INTEGER NOT NULL DEFAULT 0,
     stain_vertical_sqft REAL DEFAULT 0,
@@ -128,6 +129,7 @@ const MIGRATIONS = {
   sanding_multiplier: "REAL DEFAULT 1",
   staining_enabled: "INTEGER NOT NULL DEFAULT 0",
   stain_process: "TEXT",
+  stain_color: "TEXT",
   stain_custom_desc: "TEXT",
   stain_customer_supplied: "INTEGER NOT NULL DEFAULT 0",
   stain_vertical_sqft: "REAL DEFAULT 0",
