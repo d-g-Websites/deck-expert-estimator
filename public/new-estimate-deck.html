@@ -36,6 +36,13 @@
   .structures-grid label { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; background: #fff; }
   .structures-grid label:has(input:checked) { border-color: var(--amber); background: var(--cream); }
   .structures-grid input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--amber); flex: none; }
+  .repairs-screen { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; z-index: 200; }
+  .repair-row { display: grid; grid-template-columns: 1fr 88px; gap: 0.75rem; align-items: center; padding: 0.65rem 0; border-top: 1px solid var(--line); }
+  .repair-row:first-child { border-top: none; }
+  .repair-row .rlabel { font-weight: 600; color: var(--dark); }
+  .repair-row .runit { font-size: 0.78rem; color: var(--gray); font-weight: 400; }
+  .repair-row input { width: 100%; padding: 0.55rem; border: 1px solid var(--line); border-radius: var(--radius); text-align: center; font-size: 1rem; color: var(--dark); }
+  .repair-row input:focus { outline: 2px solid var(--amber); outline-offset: -1px; }
 </style>
 </head>
 <body>
@@ -173,6 +180,12 @@
     </section>
 
     <section class="card">
+      <h2>Repairs / Replacement</h2>
+      <button type="button" class="btn secondary" id="openRepairs" style="width:100%">→ Go to Repairs Section</button>
+      <div id="repairsSummary" class="notice" style="margin-top:0.6rem;display:none"></div>
+    </section>
+
+    <section class="card">
       <h2>Extra services</h2>
       <div id="extraItems"></div>
       <button type="button" id="addExtra" class="btn secondary">+ Add line item</button>
@@ -193,6 +206,7 @@
       <div class="total-row" id="stainPergolaRow" style="display:none"><span>Pergola/gazebo staining</span><span id="stainPergolaTotal">$0.00</span></div>
       <div class="total-row" id="chicagoRow" style="display:none"><span>Chicago / Michigan (+10%)</span><span id="chicagoTotal">$0.00</span></div>
       <div class="total-row" id="metalRow" style="display:none"><span>Metal spindles (+10%)</span><span id="metalTotal">$0.00</span></div>
+      <div class="total-row" id="repairsRow" style="display:none"><span>Repairs / replacement</span><span id="repairsRowTotal">$0.00</span></div>
       <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
       <div class="total-row subtotal"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
@@ -213,6 +227,25 @@
   </div>
 </main>
 
+<div id="repairsScreen" class="repairs-screen" style="display:none">
+  <div class="topbar">
+    <a href="#" class="back" id="repairsBack">← Back to estimate</a>
+    <h1>Repairs / Replacement</h1>
+  </div>
+  <main>
+    <div class="card">
+      <h2>What needs repair or replacement?</h2>
+      <div class="hint" style="margin-bottom:0.75rem">Enter a quantity for any item that needs work. Leave blank for none.</div>
+      <div id="repairsList"></div>
+    </div>
+    <div class="card">
+      <h2>Notes</h2>
+      <div class="field"><textarea id="repairs_notes" rows="3" placeholder="Any details about the repairs…" style="width:100%;padding:0.75rem;border:1px solid var(--line);border-radius:var(--radius);font-family:inherit;font-size:1rem;color:var(--dark)"></textarea></div>
+    </div>
+    <button type="button" class="btn primary" id="repairsDone">Done — back to estimate</button>
+  </main>
+</div>
+
 <script>
 const form = document.getElementById('estimateForm');
 const errorBanner = document.getElementById('errorBanner');
@@ -228,7 +261,7 @@ const els = {
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
 const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied'), metalSpindles = $('has_metal_spindles');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null;
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -275,10 +308,52 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   fillPergolaSizes(data.pergola_gazebo_sizes);
   fillSanding(data.sanding_conditions);
   fillStainProcesses(data.stain_processes);
+  REPAIRS = data.repair_items; buildRepairs(data.repair_items);
   buildStructures(data.structures);
   updateStainUI();
   updateTotal();
 });
+function buildRepairs(obj) {
+  const list = document.getElementById('repairsList');
+  list.innerHTML = '';
+  for (const [id, info] of Object.entries(obj)) {
+    const row = document.createElement('div');
+    row.className = 'repair-row';
+    row.innerHTML = '<div><div class="rlabel"></div><div class="runit"></div></div>' +
+      '<input type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-repair="' + id + '">';
+    row.querySelector('.rlabel').textContent = info.label;
+    row.querySelector('.runit').textContent = 'per ' + info.unit;
+    row.querySelector('input').addEventListener('input', () => { updateRepairsSummary(); updateTotal(); });
+    list.appendChild(row);
+  }
+}
+function getRepairs() {
+  const out = [];
+  for (const inp of document.querySelectorAll('#repairsList input[data-repair]')) {
+    const qty = parseFloat(inp.value);
+    if (Number.isFinite(qty) && qty > 0) out.push({ item_id: inp.dataset.repair, qty });
+  }
+  return out;
+}
+function computeRepairs() {
+  if (!REPAIRS) return { total: 0, count: 0 };
+  let total = 0, count = 0;
+  for (const r of getRepairs()) {
+    const def = REPAIRS[r.item_id];
+    if (def) { total += def.price * r.qty; count++; }
+  }
+  return { total: Math.round(total * 100) / 100, count };
+}
+function updateRepairsSummary() {
+  const r = computeRepairs();
+  const sum = document.getElementById('repairsSummary');
+  if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair item' + (r.count > 1 ? 's' : '') + ' — $' + r.total.toFixed(2); }
+  else { sum.style.display = 'none'; }
+}
+document.getElementById('openRepairs').addEventListener('click', () => { document.getElementById('repairsScreen').style.display = 'block'; window.scrollTo(0, 0); });
+function closeRepairs() { document.getElementById('repairsScreen').style.display = 'none'; updateRepairsSummary(); updateTotal(); window.scrollTo(0, 0); }
+document.getElementById('repairsBack').addEventListener('click', (e) => { e.preventDefault(); closeRepairs(); });
+document.getElementById('repairsDone').addEventListener('click', closeRepairs);
 function fillStainProcesses(obj) {
   els.stainProcess.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
@@ -462,10 +537,11 @@ function updateTotal() {
   const c = computeCleaning();
   const s = computeSanding();
   const st = computeStaining();
+  const rp = computeRepairs();
   const m = computeMaterials();
   const extras = getExtras().reduce((acc, x) => acc + x.price, 0);
   const discount = num(els.discount);
-  const subtotal = c.total + s.total + st.total + m.total + extras;
+  const subtotal = c.total + s.total + st.total + rp.total + m.total + extras;
   const grand = Math.max(0, subtotal - discount);
 
   document.getElementById('cleaningRow').style.display = c.enabled ? 'flex' : 'none';
@@ -489,6 +565,8 @@ function updateTotal() {
   document.getElementById('chicagoTotal').textContent = fmt(surcharge);
   document.getElementById('metalRow').style.display = (st.metal_surcharge || 0) > 0 ? 'flex' : 'none';
   document.getElementById('metalTotal').textContent = fmt(st.metal_surcharge || 0);
+  document.getElementById('repairsRow').style.display = rp.total > 0 ? 'flex' : 'none';
+  document.getElementById('repairsRowTotal').textContent = fmt(rp.total);
   document.getElementById('verticalSqftHint').textContent = verticalSanding.checked ? ('Vertical area: ' + (num(els.vlen) * num(els.vhgt)).toFixed(0) + ' sq ft') : '';
   document.getElementById('materialsRow').style.display = m.total > 0 ? 'flex' : 'none';
   document.getElementById('materialsTotal').textContent = fmt(m.total);
@@ -636,6 +714,8 @@ form.addEventListener('submit', async (e) => {
   fd.append('stain_process', els.stainProcess.value);
   fd.append('stain_custom_desc', els.stainCustomDesc.value.trim());
   fd.append('stain_customer_supplied', stainCustomerSupplied.checked ? '1' : '');
+  fd.append('repairs', JSON.stringify(getRepairs()));
+  fd.append('repairs_notes', document.getElementById('repairs_notes').value.trim());
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));

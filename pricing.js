@@ -325,24 +325,57 @@ export function computeStaining(input) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// REPAIRS / REPLACEMENT catalog — EDIT THESE (labels, units, prices are PLACEHOLDERS).
+// The repairs screen shows items + quantities only (no prices); cost is computed
+// here and added to the estimate total.
+// ---------------------------------------------------------------------------
+export const REPAIR_ITEMS = {
+  deck_board:      { label: "Replace deck board",            unit: "board",   price: 25 },
+  railing_section: { label: "Replace railing section",       unit: "lin ft",  price: 30 },
+  baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
+  post:            { label: "Replace post",                  unit: "each",    price: 75 },
+  joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
+  beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
+  stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
+  stair_stringer:  { label: "Replace stair stringer",        unit: "each",    price: 90 },
+  fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
+  hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
+};
+
+export function computeRepairs(repairs) {
+  const list = Array.isArray(repairs) ? repairs : [];
+  const items = [];
+  for (const r of list) {
+    const def = REPAIR_ITEMS[r && r.item_id];
+    const qty = Number(r && r.qty) || 0;
+    if (!def || qty <= 0) continue;
+    items.push({ item_id: r.item_id, label: def.label, unit: def.unit, qty, unit_price: def.price, cost: round2(def.price * qty) });
+  }
+  const total = round2(items.reduce((s, x) => s + x.cost, 0));
+  return { items, total };
+}
+
 // Build the full deck estimate breakdown (frozen into pricing_snapshot at save).
 export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
   const staining = computeStaining(input);
+  const repairs = computeRepairs(input.repairs);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
   const extras = Array.isArray(input.extra_items) ? input.extra_items : [];
   const extrasTotal = extras.reduce((s, x) => s + (parseFloat(x.price) || 0), 0);
 
-  const subtotal = cleaning.total + sanding.total + staining.total + materials.total + extrasTotal;
+  const subtotal = cleaning.total + sanding.total + staining.total + repairs.total + materials.total + extrasTotal;
   const total = Math.max(0, subtotal - discount);
 
   return {
     cleaning,
     sanding,
     staining,
+    repairs,
     materials,
     extras: extrasTotal,
     extras_list: extras,
