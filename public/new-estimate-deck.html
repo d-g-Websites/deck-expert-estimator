@@ -416,14 +416,21 @@ function getRepairs() {
   return out;
 }
 function computeRepairs() {
-  let count = 0;
-  for (const r of getRepairs()) count += r.lines.length;
-  return { total: 0, count };   // pricing deferred — capture only
+  let count = 0, total = 0;
+  for (const r of getRepairs()) {
+    for (const ln of r.lines) {
+      count++;
+      const cat = LUMBER && LUMBER[ln.material];
+      const board = cat && cat.items[ln.board];
+      if (board) total += board.price * ln.qty;
+    }
+  }
+  return { total: Math.round(total * 100) / 100, count };
 }
 function updateRepairsSummary() {
   const r = computeRepairs();
   const sum = document.getElementById('repairsSummary');
-  if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair line' + (r.count > 1 ? 's' : '') + ' selected'; }
+  if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair line' + (r.count > 1 ? 's' : '') + ' selected · ' + fmt(r.total); }
   else { sum.style.display = 'none'; }
   updateTotal();
 }

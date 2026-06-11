@@ -412,8 +412,7 @@ export const REPAIR_ITEMS = {
 export const REPAIR_MATERIALS = ["cedar", "pressure_treated", "ipe", "engineered"];
 
 // repairs: [{ item_id, lines: [{ material, board, qty }] }]
-// Pricing is deferred — selections are captured (cost 0) until the lumber pricing
-// rule is finalized. unit_price/board_label are resolved now for an easy switch later.
+// Cost per line = unit_price (from the LUMBER catalog) × qty.
 export function computeRepairs(repairs) {
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
@@ -425,14 +424,15 @@ export function computeRepairs(repairs) {
       if (qty <= 0) continue;
       const cat = LUMBER[ln.material];
       const board = cat && cat.items[ln.board];
+      const unit_price = board ? board.price : 0;
       items.push({
         item_id: r.item_id, item_label: def.label,
         material: ln.material || null,
         board: ln.board || null,
         board_label: board ? board.label : null,
-        unit_price: board ? board.price : 0,
+        unit_price,
         qty,
-        cost: 0, // pricing deferred
+        cost: round2(unit_price * qty),
       });
     }
   }
