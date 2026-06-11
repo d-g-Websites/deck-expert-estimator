@@ -150,7 +150,7 @@
         <div class="hint" style="margin-top:0.6rem">Uses the square footage &amp; railing from Project. Square footage is horizontal deck surface only.</div>
       </div>
       <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="chicago_surcharge"> Chicago or town by Michigan (+10%)</label></div>
-      <div class="field" style="margin-top:0.85rem"><label for="cleaning_multiplier">Adj. ×</label><input type="number" id="cleaning_multiplier" step="0.05" min="0" placeholder="1.0" style="max-width:130px"><div class="hint">Internal adjustment — not shown to customer.</div></div>
+      <div class="field" style="margin-top:0.85rem"><label for="cleaning_pct">Add %</label><input type="number" id="cleaning_pct" step="1" min="0" placeholder="0" style="max-width:130px"><div class="hint">Internal — not shown to customer.</div></div>
     </section>
 
     <section class="card">
@@ -167,7 +167,7 @@
           <div class="hint" id="verticalSqftHint" style="margin-top:0.4rem"></div>
         </div>
       </div>
-      <div class="field" style="margin-top:0.85rem"><label for="sanding_multiplier">Adj. ×</label><input type="number" id="sanding_multiplier" step="0.05" min="0" placeholder="1.0" style="max-width:130px"><div class="hint">Internal adjustment — not shown to customer.</div></div>
+      <div class="field" style="margin-top:0.85rem"><label for="sanding_pct">Add %</label><input type="number" id="sanding_pct" step="1" min="0" placeholder="0" style="max-width:130px"><div class="hint">Internal — not shown to customer.</div></div>
     </section>
 
     <section class="card">
@@ -181,7 +181,7 @@
         </div>
         <div id="stainLaborNote" class="notice" style="display:none;margin-top:0.5rem"></div>
         <div class="hint">Stain material &amp; supplies are added at cost, based on the deck square footage. Railing/verticals are priced via the “Railing” option in Project.</div>
-        <div class="field" style="margin-top:0.85rem"><label for="staining_multiplier">Adj. ×</label><input type="number" id="staining_multiplier" step="0.05" min="0" placeholder="1.0" style="max-width:130px"><div class="hint">Internal adjustment — not shown to customer.</div></div>
+        <div class="field" style="margin-top:0.85rem"><label for="staining_pct">Add %</label><input type="number" id="staining_pct" step="1" min="0" placeholder="0" style="max-width:130px"><div class="hint">Internal — not shown to customer.</div></div>
       </div>
     </section>
 
@@ -258,7 +258,7 @@ const els = {
   levels: $('multilevel_levels'), pergola: $('pergola_gazebo_size'), discount: $('discount'),
   sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
   stainProcess: $('stain_process'), stainCustomDesc: $('stain_custom_desc'),
-  cleanMult: $('cleaning_multiplier'), sandMult: $('sanding_multiplier'), stainMult: $('staining_multiplier'),
+  cleanMult: $('cleaning_pct'), sandMult: $('sanding_pct'), stainMult: $('staining_pct'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
@@ -459,7 +459,8 @@ wireToggle(hasStairs, 'stairsWrap', els.stairs);
 
 function num(el) { const v = parseFloat(el.value); return Number.isFinite(v) ? v : 0; }
 function fmt(v) { return '$' + v.toFixed(2); }
-function adjMult(el) { const n = parseFloat(el.value); return (Number.isFinite(n) && n > 0) ? n : 1; }
+// reads a "% to add" field and returns the equivalent multiplier (blank/0 -> 1)
+function adjMult(el) { const n = parseFloat(el.value); return Number.isFinite(n) ? 1 + n / 100 : 1; }
 
 function computeCleaning() {
   if (!CLEANING || !cleaningEnabled.checked) return { enabled: false, deck_wash: 0, pergola: 0, surcharge: 0, total: 0 };
