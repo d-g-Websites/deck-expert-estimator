@@ -47,12 +47,14 @@ db.exec(`
     chicago_surcharge INTEGER NOT NULL DEFAULT 0,
     light_clean INTEGER NOT NULL DEFAULT 0,
     pergola_gazebo_size TEXT,
+    cleaning_multiplier REAL DEFAULT 1,
 
     -- Sanding (prep) inputs
     sanding_condition TEXT,
     vertical_sanding INTEGER NOT NULL DEFAULT 0,
     vertical_length REAL DEFAULT 0,
     vertical_height REAL DEFAULT 0,
+    sanding_multiplier REAL DEFAULT 1,
 
     -- Staining / sealing inputs
     staining_enabled INTEGER NOT NULL DEFAULT 0,
@@ -60,6 +62,7 @@ db.exec(`
     stain_custom_desc TEXT,
     stain_customer_supplied INTEGER NOT NULL DEFAULT 0,
     stain_vertical_sqft REAL DEFAULT 0,
+    staining_multiplier REAL DEFAULT 1,
 
     -- Repairs / replacement (JSON array of {item_id, qty}) + notes
     repairs TEXT NOT NULL DEFAULT '[]',
@@ -117,15 +120,18 @@ const MIGRATIONS = {
   chicago_surcharge: "INTEGER NOT NULL DEFAULT 0",
   light_clean: "INTEGER NOT NULL DEFAULT 0",
   pergola_gazebo_size: "TEXT",
+  cleaning_multiplier: "REAL DEFAULT 1",
   sanding_condition: "TEXT",
   vertical_sanding: "INTEGER NOT NULL DEFAULT 0",
   vertical_length: "REAL DEFAULT 0",
   vertical_height: "REAL DEFAULT 0",
+  sanding_multiplier: "REAL DEFAULT 1",
   staining_enabled: "INTEGER NOT NULL DEFAULT 0",
   stain_process: "TEXT",
   stain_custom_desc: "TEXT",
   stain_customer_supplied: "INTEGER NOT NULL DEFAULT 0",
   stain_vertical_sqft: "REAL DEFAULT 0",
+  staining_multiplier: "REAL DEFAULT 1",
   repairs: "TEXT NOT NULL DEFAULT '[]'",
   repairs_notes: "TEXT",
 };

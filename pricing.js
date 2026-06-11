@@ -90,6 +90,10 @@ function sqftTier(sqft) {
   return 3;
 }
 
+// Optional discreet per-section cost multiplier (internal tech adjustment).
+// 1 = no change; folded into the section total so it isn't shown to the customer.
+function adjMult(v) { const n = Number(v); return (Number.isFinite(n) && n > 0) ? n : 1; }
+
 export function computeCleaning(input) {
   if (!input.cleaning_enabled) return { enabled: false, total: 0 };
 
@@ -115,7 +119,8 @@ export function computeCleaning(input) {
 
   let total = deckWash + pergola;
   if (input.chicago_surcharge) total *= (1 + CLEANING_PRICING.chicago_surcharge);
-  total = Math.round(total * 100) / 100;
+  const adj = adjMult(input.cleaning_multiplier);
+  total = Math.round(total * adj * 100) / 100;
 
   return {
     enabled: true,
@@ -126,6 +131,7 @@ export function computeCleaning(input) {
     pergola_gazebo: pergola,
     light_clean: !!input.light_clean,
     chicago_surcharge: !!input.chicago_surcharge,
+    adj_multiplier: adj,
     total,
   };
 }
@@ -219,10 +225,12 @@ export function computeSanding(input) {
   }
   let total = horizLabor + vertLabor, surcharge = 0;
   if (input.chicago_surcharge) { surcharge = total * CLEANING_PRICING.chicago_surcharge; total += surcharge; }
+  const adj = adjMult(input.sanding_multiplier);
+  total *= adj;
   return {
     enabled: true, condition: input.sanding_condition, rate: cond.rate,
     horizontal_labor: round2(horizLabor), vertical_sqft, vertical_labor: round2(vertLabor),
-    surcharge: round2(surcharge), total: round2(total),
+    surcharge: round2(surcharge), adj_multiplier: adj, total: round2(total),
   };
 }
 
@@ -315,13 +323,14 @@ export function computeStaining(input) {
   const metal_surcharge = (input.has_metal_spindles && input.has_railing && brand.metal_spindles_surcharge)
     ? subtotal * brand.metal_spindles_surcharge : 0;
   const surcharge = chicago_surcharge + metal_surcharge;
-  const total = subtotal + surcharge;
+  const adj = adjMult(input.staining_multiplier);
+  const total = (subtotal + surcharge) * adj;
 
   return {
     enabled: true, priced: true, process: input.stain_process, base, story_multiplier: mult,
     labor: round2(labor), pergola_gazebo: pergola,
     chicago_surcharge: round2(chicago_surcharge), metal_surcharge: round2(metal_surcharge),
-    surcharge: round2(surcharge), total: round2(total),
+    surcharge: round2(surcharge), adj_multiplier: adj, total: round2(total),
   };
 }
 
