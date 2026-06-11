@@ -406,6 +406,7 @@ export const REPAIR_ITEMS = {
   support_post:    { label: "Replace support post",          unit: "each",    labor: { ground: 250, rooftop: 300 },
                        // over 8 ft bumps the labor rate
                        toggle: { id: "over_8ft", label: "Over 8 feet", labor: { ground: 300, rooftop: 350 } } },
+  support_post_ml: { label: "Replace support post — multilevel deck", unit: "each", custom_labor: true },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
@@ -472,9 +473,14 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
         const cat = LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
         const material_price = board ? board.price : 0;
-        // a checked per-item toggle (e.g. routed handrail) overrides the normal labor rate
-        const laborDef = (def.toggle && r.toggled) ? def.toggle.labor : def.labor;
-        const labor_rate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
+        // labor: tech-entered per unit (custom_labor), else a checked toggle override, else the item rate
+        let labor_rate;
+        if (def.custom_labor) {
+          labor_rate = Math.max(0, Number(ln.unit_labor) || 0);
+        } else {
+          const laborDef = (def.toggle && r.toggled) ? def.toggle.labor : def.labor;
+          labor_rate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
+        }
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: ln.material || null,

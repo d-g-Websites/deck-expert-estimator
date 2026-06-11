@@ -52,6 +52,7 @@
   .board-line .bl-board { flex: 1; min-width: 150px; }
   .board-line .bl-material { min-width: 120px; }
   .board-line .bl-qty { width: 70px; text-align: center; }
+  .board-line .bl-price { width: 100px; text-align: center; }
   .board-line .bl-remove { background: none; border: none; color: var(--amber); font-size: 1.3rem; cursor: pointer; padding: 0 0.25rem; line-height: 1; }
   .addmore { background: none; border: none; color: var(--amber); font-weight: 600; cursor: pointer; padding: 0.5rem 0; font-size: 0.9rem; }
 </style>
@@ -356,7 +357,7 @@ function boardOptions(material) {
   for (const [bid, b] of Object.entries(cat.items)) html += '<option value="' + bid + '">' + b.label + '</option>';
   return html;
 }
-function makeBoardLine(material, withSelector) {
+function makeBoardLine(material, withSelector, customLabor) {
   const div = document.createElement('div');
   div.className = 'board-line';
   if (material) div.dataset.material = material;
@@ -369,11 +370,14 @@ function makeBoardLine(material, withSelector) {
   }
   html += '<select class="bl-board">' + boardOptions(material) + '</select>' +
     '<input class="bl-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty">';
+  if (customLabor) html += '<input class="bl-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Price/post">';
   if (withSelector) html += '<button type="button" class="bl-remove" title="Remove">×</button>';
   div.innerHTML = html;
   const bSel = div.querySelector('.bl-board');
   div.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
   bSel.addEventListener('change', updateRepairsSummary);
+  const pr = div.querySelector('.bl-price');
+  if (pr) pr.addEventListener('input', updateRepairsSummary);
   const mSel = div.querySelector('.bl-material');
   if (mSel) mSel.addEventListener('change', () => { div.dataset.material = mSel.value; bSel.innerHTML = boardOptions(mSel.value); updateRepairsSummary(); });
   const rm = div.querySelector('.bl-remove');
@@ -427,10 +431,11 @@ function buildRepairs(obj) {
       const tgl = row.querySelector('.rtoggle');
       if (tgl) tgl.addEventListener('change', updateRepairsSummary);
       const lines = row.querySelector('.board-lines');
+      const customLabor = !!info.custom_labor;
       row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
         cb.addEventListener('change', () => {
           if (cb.checked) {
-            const ln = makeBoardLine(cb.dataset.mat, false);
+            const ln = makeBoardLine(cb.dataset.mat, false, customLabor);
             ln.dataset.primary = cb.dataset.mat;
             lines.appendChild(ln);
           } else {
@@ -440,7 +445,7 @@ function buildRepairs(obj) {
           updateRepairsSummary();
         });
       });
-      row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true)); });
+      row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true, customLabor)); });
     }
     list.appendChild(row);
   }
@@ -472,7 +477,10 @@ function getRepairs() {
         const board = ln.querySelector('.bl-board') ? ln.querySelector('.bl-board').value : '';
         const qty = parseFloat(ln.querySelector('.bl-qty').value);
         if (!material || !Number.isFinite(qty) || qty <= 0) continue;
-        lines.push({ material, board, qty });
+        const line = { material, board, qty };
+        const pr = ln.querySelector('.bl-price');
+        if (pr) line.unit_labor = parseFloat(pr.value) || 0;
+        lines.push(line);
       }
     }
     if (lines.length) {
@@ -501,8 +509,13 @@ function computeRepairs() {
         const cat = LUMBER && LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
         const matPrice = board ? board.price : 0;
-        const laborDef = (def && def.toggle && r.toggled) ? def.toggle.labor : (def && def.labor);
-        const laborRate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
+        let laborRate;
+        if (def && def.custom_labor) {
+          laborRate = Number(ln.unit_labor) || 0;
+        } else {
+          const laborDef = (def && def.toggle && r.toggled) ? def.toggle.labor : (def && def.labor);
+          laborRate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
+        }
         total += (matPrice + laborRate) * ln.qty;
       }
     }

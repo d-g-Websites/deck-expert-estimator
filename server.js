@@ -315,11 +315,15 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         } else {
           lines = r.lines
             .filter(ln => ln && Number(ln.qty) > 0 && REPAIR_MATERIALS.includes(ln.material))
-            .map(ln => ({
-              material: ln.material,
-              board: (LUMBER[ln.material] && LUMBER[ln.material].items[ln.board]) ? ln.board : null,
-              qty: Number(ln.qty),
-            }));
+            .map(ln => {
+              const line = {
+                material: ln.material,
+                board: (LUMBER[ln.material] && LUMBER[ln.material].items[ln.board]) ? ln.board : null,
+                qty: Number(ln.qty),
+              };
+              if (def.custom_labor) line.unit_labor = Math.max(0, parseFloat(ln.unit_labor) || 0);
+              return line;
+            });
         }
         const entry = { item_id: r.item_id, lines };
         if (def.toggle && r.toggled === true) entry.toggled = true;
