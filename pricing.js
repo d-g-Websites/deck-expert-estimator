@@ -402,7 +402,7 @@ export const REPAIR_ITEMS = {
                        toggle: { id: "routed_handrail", label: "Routed handrail", labor: { ground: 150, rooftop: 150 } } },
   upper_lower_rail:{ label: "Replace upper or lower rail",    unit: "rail",    labor: { ground: 120, rooftop: 120 } },
   baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8, labor: { ground: 10, rooftop: 10 } },
-  post:            { label: "Replace post",                  unit: "each",    price: 75 },
+  post:            { label: "Replace railing post",          unit: "each",    price: 75, labor: { ground: 200, rooftop: 250 } },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
