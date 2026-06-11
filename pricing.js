@@ -389,17 +389,31 @@ export const LUMBER = {
   },
 };
 
-export function computeRepairs(repairs, wood_type) {
-  const cat = LUMBER[wood_type];
+// ---------------------------------------------------------------------------
+// REPAIRS / REPLACEMENT catalog — generic items (placeholder prices). The lumber
+// catalog above (LUMBER) is kept for later use elsewhere.
+// ---------------------------------------------------------------------------
+export const REPAIR_ITEMS = {
+  deck_board:      { label: "Replace deck board",            unit: "board",   price: 25 },
+  railing_section: { label: "Replace railing section",       unit: "lin ft",  price: 30 },
+  baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
+  post:            { label: "Replace post",                  unit: "each",    price: 75 },
+  joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
+  beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
+  stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
+  stair_stringer:  { label: "Replace stair stringer",        unit: "each",    price: 90 },
+  fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
+  hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
+};
+
+export function computeRepairs(repairs) {
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
-  if (cat) {
-    for (const r of list) {
-      const def = cat.items[r && r.item_id];
-      const qty = Number(r && r.qty) || 0;
-      if (!def || qty <= 0) continue;
-      items.push({ item_id: r.item_id, label: def.label, qty, unit_price: def.price, cost: round2(def.price * qty) });
-    }
+  for (const r of list) {
+    const def = REPAIR_ITEMS[r && r.item_id];
+    const qty = Number(r && r.qty) || 0;
+    if (!def || qty <= 0) continue;
+    items.push({ item_id: r.item_id, label: def.label, unit: def.unit, qty, unit_price: def.price, cost: round2(def.price * qty) });
   }
   const total = round2(items.reduce((s, x) => s + x.cost, 0));
   return { items, total };
@@ -410,7 +424,7 @@ export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
   const staining = computeStaining(input);
-  const repairs = computeRepairs(input.repairs, input.wood_type);
+  const repairs = computeRepairs(input.repairs);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 

@@ -8,7 +8,7 @@ import { db } from "./db.js";
 import {
   STRUCTURE_TYPES, WOOD_TYPES, DECK_LOCATIONS, PRIOR_FINISHES, DECK_STRUCTURES,
   PERGOLA_GAZEBO_SIZES, SANDING_CONDITIONS, CLEANING_PRICING, MATERIALS_PRICING,
-  STAINING_PRICING, STAIN_PROCESSES, LUMBER, computeDeckEstimate,
+  STAINING_PRICING, STAIN_PROCESSES, REPAIR_ITEMS, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
 import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
@@ -94,7 +94,7 @@ app.get("/api/pricing/deck", requireAuth, (req, res) => {
     materials_pricing: MATERIALS_PRICING,
     staining_pricing: STAINING_PRICING,
     stain_processes: STAIN_PROCESSES,
-    lumber: LUMBER,
+    repair_items: REPAIR_ITEMS,
   });
 });
 
@@ -297,9 +297,8 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     // Repairs / replacement
     let repairsIn = [];
     try { repairsIn = b.repairs ? JSON.parse(b.repairs) : []; } catch (_) { repairsIn = []; }
-    const lumberCat = LUMBER[wood_type];
     const repairs = (Array.isArray(repairsIn) ? repairsIn : [])
-      .filter(r => r && Number(r.qty) > 0 && lumberCat && lumberCat.items[r.item_id])
+      .filter(r => r && REPAIR_ITEMS[r.item_id] && Number(r.qty) > 0)
       .map(r => ({ item_id: r.item_id, qty: Number(r.qty) }));
     const repairs_notes = (b.repairs_notes || "").trim() || null;
     let extras = [];

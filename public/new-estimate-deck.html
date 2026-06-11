@@ -235,10 +235,9 @@
     <h1>Repairs / Replacement</h1>
   </div>
   <main>
-    <div id="repairsWoodNote" class="notice" style="margin-bottom:1rem;display:none"></div>
     <div class="card">
       <h2>What needs repair or replacement?</h2>
-      <div class="hint" style="margin-bottom:0.75rem">Enter how many boards/posts to replace. Prices include taxes, delivery &amp; hardware.</div>
+      <div class="hint" style="margin-bottom:0.75rem">Enter a quantity for any item that needs work. Leave blank for none.</div>
       <div id="repairsList"></div>
     </div>
     <div class="card">
@@ -266,8 +265,7 @@ const els = {
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
 const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied'), metalSpindles = $('has_metal_spindles');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, LUMBER = null, SWATCH_BRANDS = null;
-let repairsQty = {};
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null, SWATCH_BRANDS = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -322,35 +320,23 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   fillPergolaSizes(data.pergola_gazebo_sizes);
   fillSanding(data.sanding_conditions);
   fillStainProcesses(data.stain_processes);
-  LUMBER = data.lumber; buildRepairs();
+  REPAIRS = data.repair_items; buildRepairs(data.repair_items);
   buildStructures(data.structures);
   updateStainUI();
   updateTotal();
 });
-function buildRepairs() {
+function buildRepairs(obj) {
   const list = document.getElementById('repairsList');
-  const note = document.getElementById('repairsWoodNote');
-  const wood = els.wood.value;
-  const cat = LUMBER && LUMBER[wood];
   list.innerHTML = '';
-  if (cat) {
-    note.style.display = 'block';
-    note.textContent = 'You selected a ' + cat.label + ' deck — make sure to use ' + cat.label + ' materials.';
-    for (const [id, info] of Object.entries(cat.items)) {
-      const row = document.createElement('div');
-      row.className = 'repair-row';
-      row.innerHTML = '<div class="rlabel"></div><input type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-repair="' + id + '">';
-      row.querySelector('.rlabel').textContent = info.label;
-      const inp = row.querySelector('input');
-      if (repairsQty[id] > 0) inp.value = repairsQty[id];
-      inp.addEventListener('input', () => { repairsQty[id] = parseFloat(inp.value) || 0; updateRepairsSummary(); updateTotal(); });
-      list.appendChild(row);
-    }
-  } else {
-    const woodLabel = (WOODS && WOODS[wood]) ? WOODS[wood].label : (wood || 'this wood');
-    note.style.display = 'block';
-    note.textContent = woodLabel + ': lumber pricing isn’t listed. Request it at Harry’s lumber, add 20%, and enter it under Extra services.';
-    list.innerHTML = '<div class="hint">No lumber catalog for this wood type — add materials under Extra services.</div>';
+  for (const [id, info] of Object.entries(obj)) {
+    const row = document.createElement('div');
+    row.className = 'repair-row';
+    row.innerHTML = '<div><div class="rlabel"></div><div class="runit"></div></div>' +
+      '<input type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-repair="' + id + '">';
+    row.querySelector('.rlabel').textContent = info.label;
+    row.querySelector('.runit').textContent = 'per ' + info.unit;
+    row.querySelector('input').addEventListener('input', () => { updateRepairsSummary(); updateTotal(); });
+    list.appendChild(row);
   }
 }
 function getRepairs() {
@@ -362,16 +348,14 @@ function getRepairs() {
   return out;
 }
 function computeRepairs() {
-  const cat = LUMBER && LUMBER[els.wood.value];
-  if (!cat) return { total: 0, count: 0 };
+  if (!REPAIRS) return { total: 0, count: 0 };
   let total = 0, count = 0;
   for (const r of getRepairs()) {
-    const def = cat.items[r.item_id];
+    const def = REPAIRS[r.item_id];
     if (def) { total += def.price * r.qty; count++; }
   }
   return { total: Math.round(total * 100) / 100, count };
 }
-els.wood.addEventListener('change', () => { buildRepairs(); updateRepairsSummary(); });
 function updateRepairsSummary() {
   const r = computeRepairs();
   const sum = document.getElementById('repairsSummary');
