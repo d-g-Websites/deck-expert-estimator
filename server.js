@@ -321,7 +321,9 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
               qty: Number(ln.qty),
             }));
         }
-        return { item_id: r.item_id, lines };
+        const entry = { item_id: r.item_id, lines };
+        if (def.toggle && r.toggled === true) entry.toggled = true;
+        return entry;
       })
       .filter(r => r.lines.length > 0);
     const repairs_notes = (b.repairs_notes || "").trim() || null;

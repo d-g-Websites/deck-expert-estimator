@@ -397,7 +397,9 @@ export const LUMBER = {
 // ---------------------------------------------------------------------------
 export const REPAIR_ITEMS = {
   deck_board:      { label: "Replace deck board",            unit: "board",   price: 25, labor: { ground: 80, rooftop: 120 } },
-  railing_section: { label: "Replace railing top section",   unit: "section", price: 30, labor: { ground: 80, rooftop: 120 } },
+  railing_section: { label: "Replace railing top section",   unit: "section", price: 30, labor: { ground: 80, rooftop: 120 },
+                       // optional per-item toggle: overrides the labor rate when checked
+                       toggle: { id: "routed_handrail", label: "Routed handrail", labor: { ground: 150, rooftop: 150 } } },
   upper_lower_rail:{ label: "Replace upper or lower rail",    unit: "rail",    labor: { ground: 120, rooftop: 120 } },
   baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
   post:            { label: "Replace post",                  unit: "each",    price: 75 },
@@ -467,7 +469,9 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
         const cat = LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
         const material_price = board ? board.price : 0;
-        const labor_rate = def.labor ? (rooftop ? def.labor.rooftop : def.labor.ground) : 0;
+        // a checked per-item toggle (e.g. routed handrail) overrides the normal labor rate
+        const laborDef = (def.toggle && r.toggled) ? def.toggle.labor : def.labor;
+        const labor_rate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: ln.material || null,

@@ -39,7 +39,10 @@
   .repairs-screen { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; z-index: 200; }
   .repair-row { padding: 0.7rem 0; border-top: 1px solid var(--line); }
   .repair-row:first-child { border-top: none; }
+  .repair-row .rhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.9rem; }
   .repair-row .rlabel { font-weight: 600; color: var(--dark); }
+  .repair-toggle { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--brown); font-weight: 600; cursor: pointer; }
+  .repair-toggle input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--amber); flex: none; }
   .repair-mats { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin: 0.55rem 0; }
   .repair-mats label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--text); font-weight: 500; cursor: pointer; }
   .repair-mats input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--amber); flex: none; }
@@ -417,9 +420,12 @@ function buildRepairs(obj) {
       row.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
     } else {
       const mats = REPAIR_MATERIALS.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
-      row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + mats + '</div>' +
+      const toggleHtml = info.toggle ? '<label class="repair-toggle"><input type="checkbox" class="rtoggle"> ' + info.toggle.label + '</label>' : '';
+      row.innerHTML = '<div class="rhead"><div class="rlabel"></div>' + toggleHtml + '</div><div class="repair-mats">' + mats + '</div>' +
         '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
       row.querySelector('.rlabel').textContent = info.label;
+      const tgl = row.querySelector('.rtoggle');
+      if (tgl) tgl.addEventListener('change', updateRepairsSummary);
       const lines = row.querySelector('.board-lines');
       row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
         cb.addEventListener('change', () => {
@@ -469,7 +475,12 @@ function getRepairs() {
         lines.push({ material, board, qty });
       }
     }
-    if (lines.length) out.push({ item_id: row.dataset.item, lines });
+    if (lines.length) {
+      const entry = { item_id: row.dataset.item, lines };
+      const tgl = row.querySelector('.rtoggle');
+      if (tgl && tgl.checked) entry.toggled = true;
+      out.push(entry);
+    }
   }
   return out;
 }
@@ -490,7 +501,8 @@ function computeRepairs() {
         const cat = LUMBER && LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
         const matPrice = board ? board.price : 0;
-        const laborRate = (def && def.labor) ? (rooftop ? def.labor.rooftop : def.labor.ground) : 0;
+        const laborDef = (def && def.toggle && r.toggled) ? def.toggle.labor : (def && def.labor);
+        const laborRate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
         total += (matPrice + laborRate) * ln.qty;
       }
     }
