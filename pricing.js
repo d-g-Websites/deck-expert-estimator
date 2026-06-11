@@ -251,6 +251,15 @@ export const STAINING_PRICING = {
     pergola_gazebo: { none: 0, s15x10: 600, s20x15: 800, s25x20: 1100, s30x25: 1300 },
     metal_spindles_surcharge: 0.10,
   },
+  ipe_oil: {
+    label: "IPE Oil",
+    base_no_railing:   [650, 750, 850, 950, 1050, 1050],
+    base_with_railing: [1050, 1075, 1100, 1200, 1300, 1300],
+    over_600_extra_per_200_no_railing: 100,
+    over_600_extra_per_200_with_railing: 150,
+    story_multiplier: { 1: [1, 1, 1, 1, 1, 1], 2: [1.5, 1.5, 1.5, 1.4, 1.3, 1.2], 3: [2, 2, 2, 2, 2, 2] },
+    pergola_gazebo: { none: 0, s15x10: 600, s20x15: 800, s25x20: 1100, s30x25: 1300 },
+  },
 };
 
 // Staining/sealing processes the tech can choose. `labor` -> STAINING_PRICING key
