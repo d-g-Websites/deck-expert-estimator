@@ -85,6 +85,15 @@ function render(e) {
     extras = card('Extra services', b.extras_list.map(x => row(x.description, fmt(x.price))).join(''));
   }
 
+  const MATLABEL = { cedar: 'Cedar', pressure_treated: 'Pressure treated', ipe: 'IPE', engineered: 'Engineered' };
+  let repairsCard = '';
+  if (b.repairs && b.repairs.items && b.repairs.items.length) {
+    repairsCard = card('Repairs / replacement', b.repairs.items.map(it => row(
+      it.item_label + (it.material ? ' — ' + (MATLABEL[it.material] || it.material) : '') + (it.board_label ? ' · ' + it.board_label : ''),
+      '×' + it.qty
+    )).join(''));
+  }
+
   const cl = b.cleaning || {}, sd = b.sanding || {}, stn = b.staining || {}, rep = b.repairs || {}, mat = b.materials || {};
   const totals = '<section class="card total-card"><h2 style="color:var(--cream)">Total</h2>' +
     ((cl.total || 0) > 0 ? row('Cleaning', fmt(cl.total)) : '') +
@@ -121,7 +130,7 @@ function render(e) {
   }
   const actions = '<div class="actions">' + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
 
-  content.innerHTML = customer + project + extras + totals + renderHtml + photosHtml + actions;
+  content.innerHTML = customer + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
 
   content.querySelectorAll('.photo-tile').forEach(t => t.addEventListener('click', () => openLightbox(t.dataset.url)));
   content.querySelectorAll('img[data-zoom]').forEach(img => img.addEventListener('click', () => openLightbox(img.src)));

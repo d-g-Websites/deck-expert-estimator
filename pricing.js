@@ -409,15 +409,30 @@ export const REPAIR_ITEMS = {
 // Wood/material options selectable per repair item (captured for now; pricing later).
 export const REPAIR_MATERIALS = ["cedar", "pressure_treated", "ipe", "engineered"];
 
+// repairs: [{ item_id, lines: [{ material, board, qty }] }]
+// Pricing is deferred — selections are captured (cost 0) until the lumber pricing
+// rule is finalized. unit_price/board_label are resolved now for an easy switch later.
 export function computeRepairs(repairs) {
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
   for (const r of list) {
     const def = REPAIR_ITEMS[r && r.item_id];
-    const qty = Number(r && r.qty) || 0;
-    if (!def || qty <= 0) continue;
-    const materials = Array.isArray(r.materials) ? r.materials.filter(m => REPAIR_MATERIALS.includes(m)) : [];
-    items.push({ item_id: r.item_id, label: def.label, unit: def.unit, qty, materials, unit_price: def.price, cost: round2(def.price * qty) });
+    if (!def) continue;
+    for (const ln of (Array.isArray(r.lines) ? r.lines : [])) {
+      const qty = Number(ln && ln.qty) || 0;
+      if (qty <= 0) continue;
+      const cat = LUMBER[ln.material];
+      const board = cat && cat.items[ln.board];
+      items.push({
+        item_id: r.item_id, item_label: def.label,
+        material: ln.material || null,
+        board: ln.board || null,
+        board_label: board ? board.label : null,
+        unit_price: board ? board.price : 0,
+        qty,
+        cost: 0, // pricing deferred
+      });
+    }
   }
   const total = round2(items.reduce((s, x) => s + x.cost, 0));
   return { items, total };

@@ -39,14 +39,18 @@
   .repairs-screen { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; z-index: 200; }
   .repair-row { padding: 0.7rem 0; border-top: 1px solid var(--line); }
   .repair-row:first-child { border-top: none; }
-  .repair-top { display: grid; grid-template-columns: 1fr 88px; gap: 0.75rem; align-items: center; }
   .repair-row .rlabel { font-weight: 600; color: var(--dark); }
-  .repair-row .runit { font-size: 0.78rem; color: var(--gray); font-weight: 400; }
-  .repair-top input[type=number] { width: 100%; padding: 0.55rem; border: 1px solid var(--line); border-radius: var(--radius); text-align: center; font-size: 1rem; color: var(--dark); }
-  .repair-top input[type=number]:focus { outline: 2px solid var(--amber); outline-offset: -1px; }
-  .repair-mats { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin-top: 0.55rem; }
+  .repair-mats { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin: 0.55rem 0; }
   .repair-mats label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--text); font-weight: 500; cursor: pointer; }
   .repair-mats input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--amber); flex: none; }
+  .board-line { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
+  .board-line .bl-matlabel { font-size: 0.85rem; font-weight: 600; color: var(--brown); white-space: nowrap; min-width: 110px; }
+  .board-line select, .board-line input { padding: 0.5rem; border: 1px solid var(--line); border-radius: var(--radius); font-size: 0.9rem; color: var(--dark); background: #fff; font-family: inherit; }
+  .board-line .bl-board { flex: 1; min-width: 150px; }
+  .board-line .bl-material { min-width: 120px; }
+  .board-line .bl-qty { width: 70px; text-align: center; }
+  .board-line .bl-remove { background: none; border: none; color: var(--amber); font-size: 1.3rem; cursor: pointer; padding: 0 0.25rem; line-height: 1; }
+  .addmore { background: none; border: none; color: var(--amber); font-weight: 600; cursor: pointer; padding: 0.5rem 0; font-size: 0.9rem; }
 </style>
 </head>
 <body>
@@ -269,7 +273,7 @@ const els = {
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
 const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied'), metalSpindles = $('has_metal_spindles');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null, SWATCH_BRANDS = null;
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null, LUMBER = null, SWATCH_BRANDS = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -324,7 +328,7 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   fillPergolaSizes(data.pergola_gazebo_sizes);
   fillSanding(data.sanding_conditions);
   fillStainProcesses(data.stain_processes);
-  REPAIRS = data.repair_items; buildRepairs(data.repair_items);
+  REPAIRS = data.repair_items; LUMBER = data.lumber; buildRepairs(data.repair_items);
   buildStructures(data.structures);
   updateStainUI();
   updateTotal();
@@ -335,48 +339,93 @@ const REPAIR_MATERIALS = [
   { id: 'ipe', label: 'IPE' },
   { id: 'engineered', label: 'Engineered' },
 ];
+function matLabel(id) { return (REPAIR_MATERIALS.find(m => m.id === id) || {}).label || id; }
+function boardOptions(material) {
+  const cat = LUMBER && LUMBER[material];
+  if (!cat) return '<option value="">— no lumber list —</option>';
+  let html = '<option value="">Select board…</option>';
+  for (const [bid, b] of Object.entries(cat.items)) html += '<option value="' + bid + '">' + b.label + '</option>';
+  return html;
+}
+function makeBoardLine(material, withSelector) {
+  const div = document.createElement('div');
+  div.className = 'board-line';
+  if (material) div.dataset.material = material;
+  let html = '';
+  if (withSelector) {
+    html += '<select class="bl-material"><option value="">Material…</option>' +
+      REPAIR_MATERIALS.map(m => '<option value="' + m.id + '"' + (m.id === material ? ' selected' : '') + '>' + m.label + '</option>').join('') + '</select>';
+  } else {
+    html += '<span class="bl-matlabel">' + matLabel(material) + '</span>';
+  }
+  html += '<select class="bl-board">' + boardOptions(material) + '</select>' +
+    '<input class="bl-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty">';
+  if (withSelector) html += '<button type="button" class="bl-remove" title="Remove">×</button>';
+  div.innerHTML = html;
+  const bSel = div.querySelector('.bl-board');
+  div.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
+  bSel.addEventListener('change', updateRepairsSummary);
+  const mSel = div.querySelector('.bl-material');
+  if (mSel) mSel.addEventListener('change', () => { div.dataset.material = mSel.value; bSel.innerHTML = boardOptions(mSel.value); updateRepairsSummary(); });
+  const rm = div.querySelector('.bl-remove');
+  if (rm) rm.addEventListener('click', () => { div.remove(); updateRepairsSummary(); });
+  return div;
+}
 function buildRepairs(obj) {
   const list = document.getElementById('repairsList');
   list.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
     const row = document.createElement('div');
     row.className = 'repair-row';
+    row.dataset.item = id;
     const mats = REPAIR_MATERIALS.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
-    row.innerHTML =
-      '<div class="repair-top"><div><div class="rlabel"></div><div class="runit"></div></div>' +
-      '<input type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-repair="' + id + '"></div>' +
-      '<div class="repair-mats">' + mats + '</div>';
+    row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + mats + '</div>' +
+      '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
     row.querySelector('.rlabel').textContent = info.label;
-    row.querySelector('.runit').textContent = 'per ' + info.unit;
-    row.querySelector('input[data-repair]').addEventListener('input', () => { updateRepairsSummary(); updateTotal(); });
+    const lines = row.querySelector('.board-lines');
+    row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          const ln = makeBoardLine(cb.dataset.mat, false);
+          ln.dataset.primary = cb.dataset.mat;
+          lines.appendChild(ln);
+        } else {
+          const ln = lines.querySelector('.board-line[data-primary="' + cb.dataset.mat + '"]');
+          if (ln) ln.remove();
+        }
+        updateRepairsSummary();
+      });
+    });
+    row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true)); });
     list.appendChild(row);
   }
 }
 function getRepairs() {
   const out = [];
   for (const row of document.querySelectorAll('#repairsList .repair-row')) {
-    const inp = row.querySelector('input[data-repair]');
-    const qty = parseFloat(inp.value);
-    if (!Number.isFinite(qty) || qty <= 0) continue;
-    const materials = Array.from(row.querySelectorAll('.repair-mats input:checked')).map(c => c.dataset.mat);
-    out.push({ item_id: inp.dataset.repair, qty, materials });
+    const lines = [];
+    for (const ln of row.querySelectorAll('.board-line')) {
+      const material = ln.dataset.material || '';
+      const board = ln.querySelector('.bl-board') ? ln.querySelector('.bl-board').value : '';
+      const qty = parseFloat(ln.querySelector('.bl-qty').value);
+      if (!material || !Number.isFinite(qty) || qty <= 0) continue;
+      lines.push({ material, board, qty });
+    }
+    if (lines.length) out.push({ item_id: row.dataset.item, lines });
   }
   return out;
 }
 function computeRepairs() {
-  if (!REPAIRS) return { total: 0, count: 0 };
-  let total = 0, count = 0;
-  for (const r of getRepairs()) {
-    const def = REPAIRS[r.item_id];
-    if (def) { total += def.price * r.qty; count++; }
-  }
-  return { total: Math.round(total * 100) / 100, count };
+  let count = 0;
+  for (const r of getRepairs()) count += r.lines.length;
+  return { total: 0, count };   // pricing deferred — capture only
 }
 function updateRepairsSummary() {
   const r = computeRepairs();
   const sum = document.getElementById('repairsSummary');
-  if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair item' + (r.count > 1 ? 's' : '') + ' — $' + r.total.toFixed(2); }
+  if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair line' + (r.count > 1 ? 's' : '') + ' selected'; }
   else { sum.style.display = 'none'; }
+  updateTotal();
 }
 document.getElementById('openRepairs').addEventListener('click', () => { document.getElementById('repairsScreen').style.display = 'block'; window.scrollTo(0, 0); });
 function closeRepairs() { document.getElementById('repairsScreen').style.display = 'none'; updateRepairsSummary(); updateTotal(); window.scrollTo(0, 0); }
