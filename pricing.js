@@ -403,6 +403,9 @@ export const REPAIR_ITEMS = {
   upper_lower_rail:{ label: "Replace upper or lower rail",    unit: "rail",    labor: { ground: 120, rooftop: 120 } },
   baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8, labor: { ground: 10, rooftop: 10 } },
   post:            { label: "Replace railing post",          unit: "each",    price: 75, labor: { ground: 200, rooftop: 250 } },
+  support_post:    { label: "Replace support post",          unit: "each",    labor: { ground: 250, rooftop: 300 },
+                       // over 8 ft bumps the labor rate
+                       toggle: { id: "over_8ft", label: "Over 8 feet", labor: { ground: 300, rooftop: 350 } } },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
