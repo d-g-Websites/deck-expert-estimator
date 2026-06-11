@@ -335,31 +335,71 @@ export function computeStaining(input) {
 }
 
 // ---------------------------------------------------------------------------
-// REPAIRS / REPLACEMENT catalog — EDIT THESE (labels, units, prices are PLACEHOLDERS).
-// The repairs screen shows items + quantities only (no prices); cost is computed
-// here and added to the estimate total.
+// LUMBER catalog for REPAIRS / REPLACEMENT — priced per board, by wood type.
+// Prices include taxes, delivery/handling, and hardware (screws/nails/bolts).
+// Items not listed (or other wood types) → request at Harry's lumber, add 20%,
+// and enter as custom line items (Extra services).
 // ---------------------------------------------------------------------------
-export const REPAIR_ITEMS = {
-  deck_board:      { label: "Replace deck board",            unit: "board",   price: 25 },
-  railing_section: { label: "Replace railing section",       unit: "lin ft",  price: 30 },
-  baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8 },
-  post:            { label: "Replace post",                  unit: "each",    price: 75 },
-  joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
-  beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
-  stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
-  stair_stringer:  { label: "Replace stair stringer",        unit: "each",    price: 90 },
-  fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
-  hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
+export const LUMBER = {
+  pressure_treated: {
+    label: "Pressure-treated",
+    items: {
+      deck_5_4x6x10: { label: "5/4x6x10 decking board", price: 20 },
+      deck_5_4x6x16: { label: "5/4x6x16 decking board", price: 35 },
+      deck_5_4x6x20: { label: "5/4x6x20 decking board", price: 45 },
+      b_2x6x10:      { label: "2x6x10 board",  price: 20 },
+      b_2x6x16:      { label: "2x6x16 board",  price: 35 },
+      b_2x4x16:      { label: "2x4x16 board",  price: 23 },
+      b_2x4x10:      { label: "2x4x10 board",  price: 13 },
+      b_1x8x16:      { label: "1x8x16 board",  price: 40 },
+      b_1x8x10:      { label: "1x8x10 board",  price: 30 },
+      b_1x12x16:     { label: "1x12x16 board", price: 88 },
+      b_1x12x12:     { label: "1x12x12 board", price: 40 },
+      b_2x8x16:      { label: "2x8x16 board",  price: 40 },
+      b_2x8x10:      { label: "2x8x10 board",  price: 25 },
+      b_2x10x16:     { label: "2x10x16 board", price: 50 },
+      b_2x10x10:     { label: "2x10x10 board", price: 28 },
+      b_2x12x16:     { label: "2x12x16 board", price: 60 },
+      b_2x12x10:     { label: "2x12x10 board", price: 35 },
+      post_4x4x12:   { label: "4x4x12 post", price: 35 },
+      post_4x4x8:    { label: "4x4x8 post",  price: 25 },
+      post_6x6x12:   { label: "6x6x12 post", price: 80 },
+      post_6x6x8:    { label: "6x6x8 post",  price: 60 },
+    },
+  },
+  cedar: {
+    label: "Cedar",
+    items: {
+      deck_5_4x6x10: { label: "5/4x6x10 decking board", price: 40 },
+      deck_5_4x6x16: { label: "5/4x6x16 decking board", price: 60 },
+      deck_5_4x6x20: { label: "5/4x6x20 decking board", price: 95 },
+      b_2x6x10:      { label: "2x6x10 board",  price: 40 },
+      b_2x6x16:      { label: "2x6x16 board",  price: 65 },
+      b_2x4x16:      { label: "2x4x16 board",  price: 40 },
+      b_2x4x10:      { label: "2x4x10 board",  price: 20 },
+      b_1x8x16:      { label: "1x8x16 board",  price: 70 },
+      b_1x8x10:      { label: "1x8x10 board",  price: 45 },
+      b_1x12x16:     { label: "1x12x16 board", price: 185 },
+      b_1x12x10:     { label: "1x12x10 board", price: 90 },
+      post_4x4x12:   { label: "4x4x12 post", price: 85 },
+      post_4x4x8:    { label: "4x4x8 post",  price: 60 },
+      post_6x6x12:   { label: "6x6x12 post", price: 350 },
+      post_6x6x8:    { label: "6x6x8 post",  price: 250 },
+    },
+  },
 };
 
-export function computeRepairs(repairs) {
+export function computeRepairs(repairs, wood_type) {
+  const cat = LUMBER[wood_type];
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
-  for (const r of list) {
-    const def = REPAIR_ITEMS[r && r.item_id];
-    const qty = Number(r && r.qty) || 0;
-    if (!def || qty <= 0) continue;
-    items.push({ item_id: r.item_id, label: def.label, unit: def.unit, qty, unit_price: def.price, cost: round2(def.price * qty) });
+  if (cat) {
+    for (const r of list) {
+      const def = cat.items[r && r.item_id];
+      const qty = Number(r && r.qty) || 0;
+      if (!def || qty <= 0) continue;
+      items.push({ item_id: r.item_id, label: def.label, qty, unit_price: def.price, cost: round2(def.price * qty) });
+    }
   }
   const total = round2(items.reduce((s, x) => s + x.cost, 0));
   return { items, total };
@@ -370,7 +410,7 @@ export function computeDeckEstimate(input) {
   const cleaning = computeCleaning(input);
   const sanding = computeSanding(input);
   const staining = computeStaining(input);
-  const repairs = computeRepairs(input.repairs);
+  const repairs = computeRepairs(input.repairs, input.wood_type);
   const materials = computeMaterials(input);
   const discount = Number(input.discount) || 0;
 
