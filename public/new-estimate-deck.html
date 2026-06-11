@@ -377,45 +377,97 @@ function makeBoardLine(material, withSelector) {
   if (rm) rm.addEventListener('click', () => { div.remove(); updateRepairsSummary(); });
   return div;
 }
+function makeOptionLine(optId, label) {
+  const div = document.createElement('div');
+  div.className = 'board-line';
+  div.dataset.option = optId;
+  div.dataset.primary = optId;
+  div.innerHTML = '<span class="bl-matlabel">' + label + '</span>' +
+    '<input class="bl-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty">';
+  div.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
+  return div;
+}
 function buildRepairs(obj) {
   const list = document.getElementById('repairsList');
   list.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
+    const mode = info.mode || 'material';
     const row = document.createElement('div');
     row.className = 'repair-row';
     row.dataset.item = id;
-    const mats = REPAIR_MATERIALS.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
-    row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + mats + '</div>' +
-      '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
-    row.querySelector('.rlabel').textContent = info.label;
-    const lines = row.querySelector('.board-lines');
-    row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
-      cb.addEventListener('change', () => {
-        if (cb.checked) {
-          const ln = makeBoardLine(cb.dataset.mat, false);
-          ln.dataset.primary = cb.dataset.mat;
-          lines.appendChild(ln);
-        } else {
-          const ln = lines.querySelector('.board-line[data-primary="' + cb.dataset.mat + '"]');
-          if (ln) ln.remove();
-        }
-        updateRepairsSummary();
+    row.dataset.mode = mode;
+
+    if (mode === 'options') {
+      const opts = Object.entries(info.options).map(([oid, o]) => '<label><input type="checkbox" data-opt="' + oid + '"> ' + o.label + '</label>').join('');
+      row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + opts + '</div><div class="board-lines"></div>';
+      row.querySelector('.rlabel').textContent = info.label;
+      const lines = row.querySelector('.board-lines');
+      row.querySelectorAll('.repair-mats input[data-opt]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) lines.appendChild(makeOptionLine(cb.dataset.opt, info.options[cb.dataset.opt].label));
+          else { const ln = lines.querySelector('.board-line[data-option="' + cb.dataset.opt + '"]'); if (ln) ln.remove(); }
+          updateRepairsSummary();
+        });
       });
-    });
-    row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true)); });
+    } else if (mode === 'qty') {
+      row.innerHTML = '<div class="rlabel"></div><div class="qty-only board-line">' +
+        '<input class="bl-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty"></div>' +
+        '<div class="hint">Labor is tiered by count' + (info.supplies_per_unit ? '; +' + fmt(info.supplies_per_unit) + '/unit supplies' : '') + '.</div>';
+      row.querySelector('.rlabel').textContent = info.label;
+      row.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
+    } else {
+      const mats = REPAIR_MATERIALS.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
+      row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + mats + '</div>' +
+        '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
+      row.querySelector('.rlabel').textContent = info.label;
+      const lines = row.querySelector('.board-lines');
+      row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            const ln = makeBoardLine(cb.dataset.mat, false);
+            ln.dataset.primary = cb.dataset.mat;
+            lines.appendChild(ln);
+          } else {
+            const ln = lines.querySelector('.board-line[data-primary="' + cb.dataset.mat + '"]');
+            if (ln) ln.remove();
+          }
+          updateRepairsSummary();
+        });
+      });
+      row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true)); });
+    }
     list.appendChild(row);
   }
+}
+function footerRate(tiers, qty) {
+  if (!Array.isArray(tiers) || !tiers.length) return 0;
+  for (const t of tiers) if (qty <= t.max) return t.price;
+  return tiers[tiers.length - 1].price;
 }
 function getRepairs() {
   const out = [];
   for (const row of document.querySelectorAll('#repairsList .repair-row')) {
+    const mode = row.dataset.mode || 'material';
     const lines = [];
-    for (const ln of row.querySelectorAll('.board-line')) {
-      const material = ln.dataset.material || '';
-      const board = ln.querySelector('.bl-board') ? ln.querySelector('.bl-board').value : '';
-      const qty = parseFloat(ln.querySelector('.bl-qty').value);
-      if (!material || !Number.isFinite(qty) || qty <= 0) continue;
-      lines.push({ material, board, qty });
+    if (mode === 'options') {
+      for (const ln of row.querySelectorAll('.board-line')) {
+        const option = ln.dataset.option || '';
+        const qty = parseFloat(ln.querySelector('.bl-qty').value);
+        if (!option || !Number.isFinite(qty) || qty <= 0) continue;
+        lines.push({ option, qty });
+      }
+    } else if (mode === 'qty') {
+      const q = row.querySelector('.bl-qty');
+      const qty = q ? parseFloat(q.value) : NaN;
+      if (Number.isFinite(qty) && qty > 0) lines.push({ qty });
+    } else {
+      for (const ln of row.querySelectorAll('.board-line')) {
+        const material = ln.dataset.material || '';
+        const board = ln.querySelector('.bl-board') ? ln.querySelector('.bl-board').value : '';
+        const qty = parseFloat(ln.querySelector('.bl-qty').value);
+        if (!material || !Number.isFinite(qty) || qty <= 0) continue;
+        lines.push({ material, board, qty });
+      }
     }
     if (lines.length) out.push({ item_id: row.dataset.item, lines });
   }
@@ -424,11 +476,20 @@ function getRepairs() {
 function computeRepairs() {
   let count = 0, total = 0;
   for (const r of getRepairs()) {
+    const def = REPAIRS && REPAIRS[r.item_id];
+    const mode = (def && def.mode) || 'material';
     for (const ln of r.lines) {
       count++;
-      const cat = LUMBER && LUMBER[ln.material];
-      const board = cat && cat.items[ln.board];
-      if (board) total += board.price * ln.qty;
+      if (mode === 'options') {
+        const o = def.options && def.options[ln.option];
+        if (o) total += o.price * ln.qty;
+      } else if (mode === 'qty') {
+        total += footerRate(def.tiers, ln.qty) * ln.qty + (def.supplies_per_unit || 0) * ln.qty;
+      } else {
+        const cat = LUMBER && LUMBER[ln.material];
+        const board = cat && cat.items[ln.board];
+        if (board) total += board.price * ln.qty;
+      }
     }
   }
   const debris = parseFloat($('debris_removal').value) || 0;

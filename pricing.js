@@ -403,7 +403,18 @@ export const REPAIR_ITEMS = {
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20 },
-  stair_stringer:  { label: "Replace stair stringer",        unit: "each",    price: 90 },
+  stair_stringer:  { label: "Replace stair stringer", mode: "options", options: {
+                       up_to_8: { label: "Up to 8 steps",     price: 200 },
+                       over_8:  { label: "8 steps or more",   price: 300 },
+                     } },
+  concrete_footer: { label: "Concrete footer (no digging out old footer)", mode: "qty",
+                       supplies_per_unit: 25,
+                       // labor per piece, tiered by how many footers are poured
+                       tiers: [
+                         { max: 1,  price: 350 },   // 1 footer
+                         { max: 5,  price: 300 },   // 2–5 footers
+                         { max: 15, price: 230 },   // 6–15 footers
+                       ] },
   fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
   hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
 };
@@ -411,8 +422,17 @@ export const REPAIR_ITEMS = {
 // Wood/material options selectable per repair item (captured for now; pricing later).
 export const REPAIR_MATERIALS = ["cedar", "pressure_treated", "ipe", "engineered"];
 
-// repairs: [{ item_id, lines: [{ material, board, qty }] }]
-// Cost per line = unit_price (from the LUMBER catalog) × qty.
+// Pick the per-piece labor rate for a tiered (qty-mode) repair item.
+export function footerRate(tiers, qty) {
+  if (!Array.isArray(tiers) || !tiers.length) return 0;
+  for (const t of tiers) if (qty <= t.max) return t.price;
+  return tiers[tiers.length - 1].price;
+}
+
+// repairs: [{ item_id, lines: [...] }]. Line shape depends on the item's mode:
+//   material (default): { material, board, qty } → LUMBER unit price × qty
+//   options:            { option, qty }          → option.price × qty
+//   qty:                { qty }                  → tiered labor × qty + supplies × qty
 // debris = flat debris-removal charge entered by the tech, added to the total.
 export function computeRepairs(repairs, debris = 0) {
   const list = Array.isArray(repairs) ? repairs : [];
@@ -420,21 +440,40 @@ export function computeRepairs(repairs, debris = 0) {
   for (const r of list) {
     const def = REPAIR_ITEMS[r && r.item_id];
     if (!def) continue;
+    const mode = def.mode || "material";
     for (const ln of (Array.isArray(r.lines) ? r.lines : [])) {
       const qty = Number(ln && ln.qty) || 0;
       if (qty <= 0) continue;
-      const cat = LUMBER[ln.material];
-      const board = cat && cat.items[ln.board];
-      const unit_price = board ? board.price : 0;
-      items.push({
-        item_id: r.item_id, item_label: def.label,
-        material: ln.material || null,
-        board: ln.board || null,
-        board_label: board ? board.label : null,
-        unit_price,
-        qty,
-        cost: round2(unit_price * qty),
-      });
+      if (mode === "options") {
+        const opt = def.options && def.options[ln.option];
+        if (!opt) continue;
+        items.push({
+          item_id: r.item_id, item_label: def.label,
+          material: null, board: null, board_label: opt.label,
+          unit_price: opt.price, qty, cost: round2(opt.price * qty),
+        });
+      } else if (mode === "qty") {
+        const rate = footerRate(def.tiers, qty);
+        const supplies = (def.supplies_per_unit || 0) * qty;
+        items.push({
+          item_id: r.item_id, item_label: def.label,
+          material: null, board: null, board_label: null,
+          unit_price: rate, qty, cost: round2(rate * qty + supplies),
+        });
+      } else {
+        const cat = LUMBER[ln.material];
+        const board = cat && cat.items[ln.board];
+        const unit_price = board ? board.price : 0;
+        items.push({
+          item_id: r.item_id, item_label: def.label,
+          material: ln.material || null,
+          board: ln.board || null,
+          board_label: board ? board.label : null,
+          unit_price,
+          qty,
+          cost: round2(unit_price * qty),
+        });
+      }
     }
   }
   const debris_removal = Math.max(0, Number(debris) || 0);

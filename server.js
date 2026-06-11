@@ -300,16 +300,29 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     try { repairsIn = b.repairs ? JSON.parse(b.repairs) : []; } catch (_) { repairsIn = []; }
     const repairs = (Array.isArray(repairsIn) ? repairsIn : [])
       .filter(r => r && REPAIR_ITEMS[r.item_id] && Array.isArray(r.lines))
-      .map(r => ({
-        item_id: r.item_id,
-        lines: r.lines
-          .filter(ln => ln && Number(ln.qty) > 0 && REPAIR_MATERIALS.includes(ln.material))
-          .map(ln => ({
-            material: ln.material,
-            board: (LUMBER[ln.material] && LUMBER[ln.material].items[ln.board]) ? ln.board : null,
-            qty: Number(ln.qty),
-          })),
-      }))
+      .map(r => {
+        const def = REPAIR_ITEMS[r.item_id];
+        const mode = def.mode || "material";
+        let lines;
+        if (mode === "options") {
+          lines = r.lines
+            .filter(ln => ln && Number(ln.qty) > 0 && def.options && def.options[ln.option])
+            .map(ln => ({ option: ln.option, qty: Number(ln.qty) }));
+        } else if (mode === "qty") {
+          lines = r.lines
+            .filter(ln => ln && Number(ln.qty) > 0)
+            .map(ln => ({ qty: Number(ln.qty) }));
+        } else {
+          lines = r.lines
+            .filter(ln => ln && Number(ln.qty) > 0 && REPAIR_MATERIALS.includes(ln.material))
+            .map(ln => ({
+              material: ln.material,
+              board: (LUMBER[ln.material] && LUMBER[ln.material].items[ln.board]) ? ln.board : null,
+              qty: Number(ln.qty),
+            }));
+        }
+        return { item_id: r.item_id, lines };
+      })
       .filter(r => r.lines.length > 0);
     const repairs_notes = (b.repairs_notes || "").trim() || null;
     const debris_removal = Math.max(0, parseFloat(b.debris_removal) || 0);
