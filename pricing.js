@@ -406,6 +406,9 @@ export const REPAIR_ITEMS = {
   hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
 };
 
+// Wood/material options selectable per repair item (captured for now; pricing later).
+export const REPAIR_MATERIALS = ["cedar", "pressure_treated", "ipe", "engineered"];
+
 export function computeRepairs(repairs) {
   const list = Array.isArray(repairs) ? repairs : [];
   const items = [];
@@ -413,7 +416,8 @@ export function computeRepairs(repairs) {
     const def = REPAIR_ITEMS[r && r.item_id];
     const qty = Number(r && r.qty) || 0;
     if (!def || qty <= 0) continue;
-    items.push({ item_id: r.item_id, label: def.label, unit: def.unit, qty, unit_price: def.price, cost: round2(def.price * qty) });
+    const materials = Array.isArray(r.materials) ? r.materials.filter(m => REPAIR_MATERIALS.includes(m)) : [];
+    items.push({ item_id: r.item_id, label: def.label, unit: def.unit, qty, materials, unit_price: def.price, cost: round2(def.price * qty) });
   }
   const total = round2(items.reduce((s, x) => s + x.cost, 0));
   return { items, total };

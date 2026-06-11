@@ -37,12 +37,16 @@
   .structures-grid label:has(input:checked) { border-color: var(--amber); background: var(--cream); }
   .structures-grid input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--amber); flex: none; }
   .repairs-screen { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; z-index: 200; }
-  .repair-row { display: grid; grid-template-columns: 1fr 88px; gap: 0.75rem; align-items: center; padding: 0.65rem 0; border-top: 1px solid var(--line); }
+  .repair-row { padding: 0.7rem 0; border-top: 1px solid var(--line); }
   .repair-row:first-child { border-top: none; }
+  .repair-top { display: grid; grid-template-columns: 1fr 88px; gap: 0.75rem; align-items: center; }
   .repair-row .rlabel { font-weight: 600; color: var(--dark); }
   .repair-row .runit { font-size: 0.78rem; color: var(--gray); font-weight: 400; }
-  .repair-row input { width: 100%; padding: 0.55rem; border: 1px solid var(--line); border-radius: var(--radius); text-align: center; font-size: 1rem; color: var(--dark); }
-  .repair-row input:focus { outline: 2px solid var(--amber); outline-offset: -1px; }
+  .repair-top input[type=number] { width: 100%; padding: 0.55rem; border: 1px solid var(--line); border-radius: var(--radius); text-align: center; font-size: 1rem; color: var(--dark); }
+  .repair-top input[type=number]:focus { outline: 2px solid var(--amber); outline-offset: -1px; }
+  .repair-mats { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin-top: 0.55rem; }
+  .repair-mats label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--text); font-weight: 500; cursor: pointer; }
+  .repair-mats input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--amber); flex: none; }
 </style>
 </head>
 <body>
@@ -325,25 +329,37 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   updateStainUI();
   updateTotal();
 });
+const REPAIR_MATERIALS = [
+  { id: 'cedar', label: 'Cedar' },
+  { id: 'pressure_treated', label: 'Pressure treated' },
+  { id: 'ipe', label: 'IPE' },
+  { id: 'engineered', label: 'Engineered' },
+];
 function buildRepairs(obj) {
   const list = document.getElementById('repairsList');
   list.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
     const row = document.createElement('div');
     row.className = 'repair-row';
-    row.innerHTML = '<div><div class="rlabel"></div><div class="runit"></div></div>' +
-      '<input type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-repair="' + id + '">';
+    const mats = REPAIR_MATERIALS.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
+    row.innerHTML =
+      '<div class="repair-top"><div><div class="rlabel"></div><div class="runit"></div></div>' +
+      '<input type="number" min="0" step="1" inputmode="numeric" placeholder="0" data-repair="' + id + '"></div>' +
+      '<div class="repair-mats">' + mats + '</div>';
     row.querySelector('.rlabel').textContent = info.label;
     row.querySelector('.runit').textContent = 'per ' + info.unit;
-    row.querySelector('input').addEventListener('input', () => { updateRepairsSummary(); updateTotal(); });
+    row.querySelector('input[data-repair]').addEventListener('input', () => { updateRepairsSummary(); updateTotal(); });
     list.appendChild(row);
   }
 }
 function getRepairs() {
   const out = [];
-  for (const inp of document.querySelectorAll('#repairsList input[data-repair]')) {
+  for (const row of document.querySelectorAll('#repairsList .repair-row')) {
+    const inp = row.querySelector('input[data-repair]');
     const qty = parseFloat(inp.value);
-    if (Number.isFinite(qty) && qty > 0) out.push({ item_id: inp.dataset.repair, qty });
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    const materials = Array.from(row.querySelectorAll('.repair-mats input:checked')).map(c => c.dataset.mat);
+    out.push({ item_id: inp.dataset.repair, qty, materials });
   }
   return out;
 }
