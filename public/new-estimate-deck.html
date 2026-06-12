@@ -468,10 +468,12 @@ function buildRepairs(obj) {
     list.appendChild(row);
   }
 }
-function footerRate(tiers, qty) {
-  if (!Array.isArray(tiers) || !tiers.length) return 0;
-  for (const t of tiers) if (qty <= t.max) return t.price;
-  return tiers[tiers.length - 1].price;
+function footerLabor(g, qty) {
+  const n = Number(qty) || 0;
+  if (!g || n <= 0) return 0;
+  if (n === 1) return g.single;
+  if (n <= g.flat_through) return g.flat_rate * n;
+  return g.flat_rate * g.flat_through + g.extra_rate * (n - g.flat_through);
 }
 function getRepairs() {
   const out = [];
@@ -522,7 +524,7 @@ function computeRepairs() {
         const o = def.options && def.options[ln.option];
         if (o) total += o.price * ln.qty;
       } else if (mode === 'qty') {
-        total += footerRate(def.tiers, ln.qty) * ln.qty + (def.supplies_per_unit || 0) * ln.qty;
+        total += footerLabor(def.graduated, ln.qty) + (def.supplies_per_unit || 0) * ln.qty;
       } else {
         const cat = LUMBER && LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
@@ -558,10 +560,9 @@ function repairsBreakdown() {
         lab = (o ? o.price : 0) * ln.qty;
         detail = o ? o.label : '';
       } else if (mode === 'qty') {
-        const rate = footerRate(def.tiers, ln.qty);
-        lab = rate * ln.qty;
+        lab = footerLabor(def.graduated, ln.qty);
         mat = (def.supplies_per_unit || 0) * ln.qty;
-        detail = 'Labor ' + fmt(rate) + '/ea' + (def.supplies_per_unit ? ' + ' + fmt(def.supplies_per_unit) + '/ea supplies' : '');
+        detail = 'Labor ' + fmt(lab) + (def.supplies_per_unit ? ' + ' + fmt(def.supplies_per_unit) + '/ea supplies' : '');
       } else {
         const cat = LUMBER && LUMBER[ln.material];
         const board = cat && cat.items[ln.board];

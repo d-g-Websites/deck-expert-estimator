@@ -415,12 +415,9 @@ export const REPAIR_ITEMS = {
                        labor_note: "Use $200 to $400 per board depending on difficulty" },
   concrete_footer: { label: "Concrete footer (no digging out old footer)", mode: "qty",
                        supplies_per_unit: 25,
-                       // labor per piece, tiered by how many footers are poured
-                       tiers: [
-                         { max: 1,  price: 350 },   // 1 footer
-                         { max: 5,  price: 300 },   // 2–5 footers
-                         { max: 15, price: 230 },   // 6–15 footers
-                       ] },
+                       // graduated labor: $350 for a single footer; flat $300/ea through 5;
+                       // each footer past 5 adds $230 on top of the 5-footer base.
+                       graduated: { single: 350, flat_rate: 300, flat_through: 5, extra_rate: 230 } },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
 };
@@ -428,11 +425,14 @@ export const REPAIR_ITEMS = {
 // Wood/material options selectable per repair item (captured for now; pricing later).
 export const REPAIR_MATERIALS = ["cedar", "pressure_treated", "ipe", "engineered"];
 
-// Pick the per-piece labor rate for a tiered (qty-mode) repair item.
-export function footerRate(tiers, qty) {
-  if (!Array.isArray(tiers) || !tiers.length) return 0;
-  for (const t of tiers) if (qty <= t.max) return t.price;
-  return tiers[tiers.length - 1].price;
+// Total labor for a graduated qty-mode item (e.g. concrete footers). Monotonic:
+// 1 → single; 2..flat_through → flat_rate × qty; beyond → flat base + extra_rate × overage.
+export function footerLabor(g, qty) {
+  const n = Number(qty) || 0;
+  if (!g || n <= 0) return 0;
+  if (n === 1) return g.single;
+  if (n <= g.flat_through) return g.flat_rate * n;
+  return g.flat_rate * g.flat_through + g.extra_rate * (n - g.flat_through);
 }
 
 // repairs: [{ item_id, lines: [...] }]. Line shape depends on the item's mode:
@@ -461,12 +461,13 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
           unit_price: opt.price, qty, cost: round2(opt.price * qty),
         });
       } else if (mode === "qty") {
-        const rate = footerRate(def.tiers, qty);
+        const labor = footerLabor(def.graduated, qty);
         const supplies = (def.supplies_per_unit || 0) * qty;
         items.push({
           item_id: r.item_id, item_label: def.label,
           material: null, board: null, board_label: null,
-          unit_price: rate, qty, cost: round2(rate * qty + supplies),
+          labor_total: round2(labor), supplies_total: round2(supplies),
+          unit_price: qty > 0 ? round2(labor / qty) : 0, qty, cost: round2(labor + supplies),
         });
       } else {
         const cat = LUMBER[ln.material];
