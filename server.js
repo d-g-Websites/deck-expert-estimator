@@ -299,21 +299,23 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     let repairsIn = [];
     try { repairsIn = b.repairs ? JSON.parse(b.repairs) : []; } catch (_) { repairsIn = []; }
     const repairs = (Array.isArray(repairsIn) ? repairsIn : [])
-      .filter(r => r && REPAIR_ITEMS[r.item_id] && Array.isArray(r.lines))
+      .filter(r => r && REPAIR_ITEMS[r.item_id])
       .map(r => {
         const def = REPAIR_ITEMS[r.item_id];
         const mode = def.mode || "material";
+        if (mode === "flag") return { item_id: r.item_id, flagged: r.flagged === true, lines: [] };
+        const inLines = Array.isArray(r.lines) ? r.lines : [];
         let lines;
         if (mode === "options") {
-          lines = r.lines
+          lines = inLines
             .filter(ln => ln && Number(ln.qty) > 0 && def.options && def.options[ln.option])
             .map(ln => ({ option: ln.option, qty: Number(ln.qty) }));
         } else if (mode === "qty") {
-          lines = r.lines
+          lines = inLines
             .filter(ln => ln && Number(ln.qty) > 0)
             .map(ln => ({ qty: Number(ln.qty) }));
         } else {
-          lines = r.lines
+          lines = inLines
             .filter(ln => ln && Number(ln.qty) > 0 && REPAIR_MATERIALS.includes(ln.material))
             .map(ln => {
               const line = {
@@ -329,7 +331,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         if (def.toggle && r.toggled === true) entry.toggled = true;
         return entry;
       })
-      .filter(r => r.lines.length > 0);
+      .filter(r => r.flagged || r.lines.length > 0);
     const repairs_notes = (b.repairs_notes || "").trim() || null;
     const debris_removal = Math.max(0, parseFloat(b.debris_removal) || 0);
     let extras = [];

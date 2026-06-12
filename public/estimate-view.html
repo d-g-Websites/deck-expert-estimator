@@ -91,10 +91,12 @@ function render(e) {
   const rDebris = (b.repairs && b.repairs.debris_removal) || 0;
   if (rItems.length || rDebris > 0) {
     repairsCard = card('Repairs / replacement',
-      rItems.map(it => row(
-        it.item_label + (it.material ? ' — ' + (MATLABEL[it.material] || it.material) : '') + (it.board_label ? ' · ' + it.board_label : '') + ' ×' + it.qty,
-        fmt(it.cost || 0)
-      )).join('') +
+      rItems.map(it => it.flagged
+        ? '<div class="row"><span class="label" style="color:#b3261e">⚠ ' + esc(it.note || it.item_label) + '</span></div>'
+        : row(
+            it.item_label + (it.material ? ' — ' + (MATLABEL[it.material] || it.material) : '') + (it.board_label ? ' · ' + it.board_label : '') + ' ×' + it.qty,
+            fmt(it.cost || 0)
+          )).join('') +
       (rDebris > 0 ? row('Debris removal', fmt(rDebris)) : ''));
   }
 

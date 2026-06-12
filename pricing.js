@@ -418,8 +418,12 @@ export const REPAIR_ITEMS = {
                        // graduated labor: $350 for a single footer; flat $300/ea through 5;
                        // each footer past 5 adds $230 on top of the 5-footer base.
                        graduated: { single: 350, flat_rate: 300, flat_through: 5, extra_rate: 230 } },
-  joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
-  beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
+  joist:           { label: "Replace/sister joists", mode: "flag",
+                       flag_label: "Potential issues with joists",
+                       estimate_note: "Potential issues with joists — these can't be fully inspected until the deck boards are removed; flagged to be evaluated during the work." },
+  beam:            { label: "Replace/reinforce beams", mode: "flag",
+                       flag_label: "Potential issues with beams",
+                       estimate_note: "Potential issues with beams — these can't be fully inspected until the deck boards are removed; flagged to be evaluated during the work." },
 };
 
 // Wood/material options selectable per repair item (captured for now; pricing later).
@@ -449,6 +453,17 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
     const def = REPAIR_ITEMS[r && r.item_id];
     if (!def) continue;
     const mode = def.mode || "material";
+    if (mode === "flag") {
+      // no-price advisory item (joists/beams): captured only when checked
+      if (r.flagged) {
+        items.push({
+          item_id: r.item_id, item_label: def.label, flagged: true,
+          note: def.estimate_note || null,
+          material: null, board: null, board_label: null, qty: 0, cost: 0,
+        });
+      }
+      continue;
+    }
     for (const ln of (Array.isArray(r.lines) ? r.lines : [])) {
       const qty = Number(ln && ln.qty) || 0;
       if (qty <= 0) continue;

@@ -63,6 +63,10 @@
   .rb-totals { margin-top: 0.5rem; padding-top: 0.6rem; border-top: 2px solid var(--line); }
   .rb-trow { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.9rem; color: var(--text); }
   .rb-trow.grand { font-weight: 700; color: var(--dark); font-size: 1rem; margin-top: 0.25rem; }
+  .repair-row.repair-flag { background: #fdeceb; border: 1px solid #f3c6c2; border-radius: var(--radius); padding: 0.7rem 0.8rem; margin-top: 0.6rem; }
+  .repair-row.repair-flag .repair-toggle { color: #b3261e; margin-top: 0.5rem; }
+  .repair-row.repair-flag .repair-toggle input[type=checkbox] { accent-color: #b3261e; }
+  .card.debris-card { background: #fff4e6; border-color: #f3d6a8; }
 </style>
 </head>
 <body>
@@ -260,7 +264,7 @@
       <div class="hint" style="margin-bottom:0.75rem">Enter a quantity for any item that needs work. Leave blank for none.</div>
       <div id="repairsList"></div>
     </div>
-    <div class="card">
+    <div class="card debris-card">
       <h2>Debris removal</h2>
       <div class="hint" style="margin-bottom:0.75rem">Flat charge for hauling away debris. Leave blank for none.</div>
       <div class="field"><label for="debris_removal">Charge ($)</label>
@@ -412,11 +416,15 @@ function buildRepairs(obj) {
   for (const [id, info] of Object.entries(obj)) {
     const mode = info.mode || 'material';
     const row = document.createElement('div');
-    row.className = 'repair-row';
+    row.className = 'repair-row' + (mode === 'flag' ? ' repair-flag' : '');
     row.dataset.item = id;
     row.dataset.mode = mode;
 
-    if (mode === 'options') {
+    if (mode === 'flag') {
+      row.innerHTML = '<div class="rlabel"></div><label class="repair-toggle"><input type="checkbox" class="rflag"> ' + info.flag_label + '</label>';
+      row.querySelector('.rlabel').textContent = info.label;
+      row.querySelector('.rflag').addEventListener('change', updateRepairsSummary);
+    } else if (mode === 'options') {
       const opts = Object.entries(info.options).map(([oid, o]) => '<label><input type="checkbox" data-opt="' + oid + '"> ' + o.label + '</label>').join('');
       row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + opts + '</div><div class="board-lines"></div>';
       row.querySelector('.rlabel').textContent = info.label;
@@ -479,6 +487,11 @@ function getRepairs() {
   const out = [];
   for (const row of document.querySelectorAll('#repairsList .repair-row')) {
     const mode = row.dataset.mode || 'material';
+    if (mode === 'flag') {
+      const cb = row.querySelector('.rflag');
+      if (cb && cb.checked) out.push({ item_id: row.dataset.item, flagged: true });
+      continue;
+    }
     const lines = [];
     if (mode === 'options') {
       for (const ln of row.querySelectorAll('.board-line')) {
@@ -518,6 +531,7 @@ function computeRepairs() {
   for (const r of getRepairs()) {
     const def = REPAIRS && REPAIRS[r.item_id];
     const mode = (def && def.mode) || 'material';
+    if (mode === 'flag') continue;
     for (const ln of r.lines) {
       count++;
       if (mode === 'options') {
@@ -548,11 +562,13 @@ function computeRepairs() {
 function repairsBreakdown() {
   const rooftop = els.location.value === 'rooftop';
   const lines = [];
+  const flags = [];
   let materials = 0, labor = 0;
   for (const r of getRepairs()) {
     const def = REPAIRS && REPAIRS[r.item_id];
     if (!def) continue;
     const mode = def.mode || 'material';
+    if (mode === 'flag') { flags.push(def.label); continue; }
     for (const ln of r.lines) {
       let mat = 0, lab = 0, detail = '';
       if (mode === 'options') {
@@ -579,12 +595,12 @@ function repairsBreakdown() {
     }
   }
   const debris = parseFloat($('debris_removal').value) || 0;
-  return { lines, materials, labor, debris, total: materials + labor + debris };
+  return { lines, flags, materials, labor, debris, total: materials + labor + debris };
 }
 function renderRepairsBreakdown() {
   const b = repairsBreakdown();
   const card = document.getElementById('repairsBreakdownCard');
-  if (!b.lines.length && b.debris <= 0) { card.style.display = 'none'; return; }
+  if (!b.lines.length && !b.flags.length && b.debris <= 0) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   let html = '';
   for (const ln of b.lines) {
@@ -592,6 +608,10 @@ function renderRepairsBreakdown() {
       '<div class="rb-cost">' + fmt(ln.cost) + '</div>' +
       '<div class="rb-detail">' + (ln.detail ? ln.detail + ' — ' : '') +
       'materials ' + fmt(ln.material) + ' · labor ' + fmt(ln.labor) + '</div></div>';
+  }
+  for (const f of b.flags) {
+    html += '<div class="rb-line"><div class="rb-name">⚠ ' + f + '</div><div class="rb-cost">flagged</div>' +
+      '<div class="rb-detail">No charge — noted in estimate</div></div>';
   }
   html += '<div class="rb-totals">' +
     '<div class="rb-trow"><span>Materials</span><span>' + fmt(b.materials) + '</span></div>' +
