@@ -55,6 +55,14 @@
   .board-line .bl-price { width: 100px; text-align: center; }
   .board-line .bl-remove { background: none; border: none; color: var(--amber); font-size: 1.3rem; cursor: pointer; padding: 0 0.25rem; line-height: 1; }
   .addmore { background: none; border: none; color: var(--amber); font-weight: 600; cursor: pointer; padding: 0.5rem 0; font-size: 0.9rem; }
+  .rb-line { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--line); }
+  .rb-line:first-child { border-top: none; }
+  .rb-line .rb-name { font-weight: 600; color: var(--dark); font-size: 0.9rem; }
+  .rb-line .rb-cost { font-weight: 600; color: var(--dark); white-space: nowrap; }
+  .rb-line .rb-detail { grid-column: 1 / -1; font-size: 0.8rem; color: var(--gray); }
+  .rb-totals { margin-top: 0.5rem; padding-top: 0.6rem; border-top: 2px solid var(--line); }
+  .rb-trow { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.9rem; color: var(--text); }
+  .rb-trow.grand { font-weight: 700; color: var(--dark); font-size: 1rem; margin-top: 0.25rem; }
 </style>
 </head>
 <body>
@@ -261,6 +269,10 @@
     <div class="card">
       <h2>Notes</h2>
       <div class="field"><textarea id="repairs_notes" rows="3" placeholder="Any details about the repairs…" style="width:100%;padding:0.75rem;border:1px solid var(--line);border-radius:var(--radius);font-family:inherit;font-size:1rem;color:var(--dark)"></textarea></div>
+    </div>
+    <div class="card" id="repairsBreakdownCard" style="display:none">
+      <h2>Repairs breakdown</h2>
+      <div id="repairsBreakdownBody"></div>
     </div>
     <button type="button" class="btn primary" id="repairsDone">Done — back to estimate</button>
   </main>
@@ -530,11 +542,69 @@ function computeRepairs() {
   if (debris > 0) total += debris;
   return { total: Math.round(total * 100) / 100, count, debris };
 }
+// Per-line breakdown (material vs labor) for the bottom-of-screen summary.
+function repairsBreakdown() {
+  const rooftop = els.location.value === 'rooftop';
+  const lines = [];
+  let materials = 0, labor = 0;
+  for (const r of getRepairs()) {
+    const def = REPAIRS && REPAIRS[r.item_id];
+    if (!def) continue;
+    const mode = def.mode || 'material';
+    for (const ln of r.lines) {
+      let mat = 0, lab = 0, detail = '';
+      if (mode === 'options') {
+        const o = def.options && def.options[ln.option];
+        lab = (o ? o.price : 0) * ln.qty;
+        detail = o ? o.label : '';
+      } else if (mode === 'qty') {
+        const rate = footerRate(def.tiers, ln.qty);
+        lab = rate * ln.qty;
+        mat = (def.supplies_per_unit || 0) * ln.qty;
+        detail = 'Labor ' + fmt(rate) + '/ea' + (def.supplies_per_unit ? ' + ' + fmt(def.supplies_per_unit) + '/ea supplies' : '');
+      } else {
+        const cat = LUMBER && LUMBER[ln.material];
+        const board = cat && cat.items[ln.board];
+        mat = (board ? board.price : 0) * ln.qty;
+        let rate;
+        if (def.custom_labor) { rate = Number(ln.unit_labor) || 0; }
+        else { const ld = (def.toggle && r.toggled) ? def.toggle.labor : def.labor; rate = ld ? (rooftop ? ld.rooftop : ld.ground) : 0; }
+        lab = rate * ln.qty;
+        detail = matLabel(ln.material) + (board ? ' · ' + board.label : '');
+        if (def.toggle && r.toggled) detail += ' · ' + def.toggle.label;
+      }
+      materials += mat; labor += lab;
+      lines.push({ label: def.label, detail, qty: ln.qty, material: mat, labor: lab, cost: mat + lab });
+    }
+  }
+  const debris = parseFloat($('debris_removal').value) || 0;
+  return { lines, materials, labor, debris, total: materials + labor + debris };
+}
+function renderRepairsBreakdown() {
+  const b = repairsBreakdown();
+  const card = document.getElementById('repairsBreakdownCard');
+  if (!b.lines.length && b.debris <= 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let html = '';
+  for (const ln of b.lines) {
+    html += '<div class="rb-line"><div class="rb-name">' + ln.label + ' ×' + ln.qty + '</div>' +
+      '<div class="rb-cost">' + fmt(ln.cost) + '</div>' +
+      '<div class="rb-detail">' + (ln.detail ? ln.detail + ' — ' : '') +
+      'materials ' + fmt(ln.material) + ' · labor ' + fmt(ln.labor) + '</div></div>';
+  }
+  html += '<div class="rb-totals">' +
+    '<div class="rb-trow"><span>Materials</span><span>' + fmt(b.materials) + '</span></div>' +
+    '<div class="rb-trow"><span>Labor</span><span>' + fmt(b.labor) + '</span></div>' +
+    (b.debris > 0 ? '<div class="rb-trow"><span>Debris removal</span><span>' + fmt(b.debris) + '</span></div>' : '') +
+    '<div class="rb-trow grand"><span>Repairs total</span><span>' + fmt(b.total) + '</span></div></div>';
+  document.getElementById('repairsBreakdownBody').innerHTML = html;
+}
 function updateRepairsSummary() {
   const r = computeRepairs();
   const sum = document.getElementById('repairsSummary');
   if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair line' + (r.count > 1 ? 's' : '') + ' selected · ' + fmt(r.total); }
   else { sum.style.display = 'none'; }
+  renderRepairsBreakdown();
   updateTotal();
 }
 document.getElementById('openRepairs').addEventListener('click', () => { document.getElementById('repairsScreen').style.display = 'block'; window.scrollTo(0, 0); });
