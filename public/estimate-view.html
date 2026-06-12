@@ -85,7 +85,7 @@ function render(e) {
     extras = card('Extra services', b.extras_list.map(x => row(x.description, fmt(x.price))).join(''));
   }
 
-  const MATLABEL = { cedar: 'Cedar', pressure_treated: 'Pressure treated', ipe: 'IPE', engineered: 'Engineered' };
+  const MATLABEL = { cedar: 'Cedar', pressure_treated: 'Pressure treated', ipe: 'IPE', engineered: 'Engineered', other: 'Custom' };
   let repairsCard = '';
   const rItems = (b.repairs && b.repairs.items) || [];
   const rDebris = (b.repairs && b.repairs.debris_removal) || 0;

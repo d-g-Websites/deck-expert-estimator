@@ -305,6 +305,31 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         const mode = def.mode || "material";
         if (mode === "flag") return { item_id: r.item_id, flagged: r.flagged === true, lines: [] };
         const inLines = Array.isArray(r.lines) ? r.lines : [];
+        if (mode === "other") {
+          const description = (r.description || "").toString().slice(0, 500).trim();
+          const lines = inLines
+            .filter(ln => ln && Number(ln.qty) > 0)
+            .map(ln => {
+              if (ln.material === "other") {
+                return {
+                  material: "other",
+                  custom_name: (ln.custom_name || "").toString().slice(0, 200).trim(),
+                  unit_material: Math.max(0, parseFloat(ln.unit_material) || 0),
+                  unit_labor: Math.max(0, parseFloat(ln.unit_labor) || 0),
+                  qty: Number(ln.qty),
+                };
+              }
+              if (!REPAIR_MATERIALS.includes(ln.material)) return null;
+              return {
+                material: ln.material,
+                board: (LUMBER[ln.material] && LUMBER[ln.material].items[ln.board]) ? ln.board : null,
+                unit_labor: Math.max(0, parseFloat(ln.unit_labor) || 0),
+                qty: Number(ln.qty),
+              };
+            })
+            .filter(Boolean);
+          return { item_id: r.item_id, description, lines };
+        }
         let lines;
         if (mode === "options") {
           lines = inLines

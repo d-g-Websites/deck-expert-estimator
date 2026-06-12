@@ -418,6 +418,8 @@ export const REPAIR_ITEMS = {
                        // graduated labor: $350 for a single footer; flat $300/ea through 5;
                        // each footer past 5 adds $230 on top of the 5-footer base.
                        graduated: { single: 350, flat_rate: 300, flat_through: 5, extra_rate: 230 } },
+  other_repairs:   { label: "Other repairs", mode: "other",
+                       labor_note: "Write the replacement (labor) cost per item." },
   joist:           { label: "Replace/sister joists", mode: "flag",
                        flag_label: "Potential issues with joists",
                        estimate_note: "Potential issues with joists — these can't be fully inspected until the deck boards are removed; flagged to be evaluated during the work." },
@@ -460,6 +462,37 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
           item_id: r.item_id, item_label: def.label, flagged: true,
           note: def.estimate_note || null,
           material: null, board: null, board_label: null, qty: 0, cost: 0,
+        });
+      }
+      continue;
+    }
+    if (mode === "other") {
+      // catch-all: per line, material from LUMBER (or a write-in custom item) + tech-entered labor
+      const desc = (r.description || "").toString().trim();
+      for (const ln of (Array.isArray(r.lines) ? r.lines : [])) {
+        const qty = Number(ln && ln.qty) || 0;
+        if (qty <= 0) continue;
+        let material_price, board_label, matId;
+        if (ln.material === "other") {
+          material_price = Math.max(0, Number(ln.unit_material) || 0);
+          board_label = (ln.custom_name || "").toString().trim() || "Custom item";
+          matId = "other";
+        } else {
+          const cat = LUMBER[ln.material];
+          const board = cat && cat.items[ln.board];
+          material_price = board ? board.price : 0;
+          board_label = board ? board.label : null;
+          matId = ln.material || null;
+        }
+        const labor_rate = Math.max(0, Number(ln.unit_labor) || 0);
+        items.push({
+          item_id: r.item_id,
+          item_label: desc ? (def.label + ": " + desc) : def.label,
+          description: desc || null,
+          material: matId, board: ln.board || null, board_label,
+          material_price, labor_rate,
+          unit_price: material_price + labor_rate, qty,
+          cost: round2((material_price + labor_rate) * qty),
         });
       }
       continue;
