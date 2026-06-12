@@ -422,7 +422,6 @@ export const REPAIR_ITEMS = {
                          { max: 15, price: 230 },   // 6–15 footers
                        ] },
   fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
-  hardware:        { label: "Replace hardware / fasteners",  unit: "lot",     price: 40 },
 };
 
 // Wood/material options selectable per repair item (captured for now; pricing later).
