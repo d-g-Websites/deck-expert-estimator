@@ -370,7 +370,7 @@ function makeBoardLine(material, withSelector, customLabor) {
   }
   html += '<select class="bl-board">' + boardOptions(material) + '</select>' +
     '<input class="bl-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty">';
-  if (customLabor) html += '<input class="bl-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Price/post">';
+  if (customLabor) html += '<input class="bl-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="' + (typeof customLabor === 'string' ? customLabor : 'Price') + '">';
   if (withSelector) html += '<button type="button" class="bl-remove" title="Remove">×</button>';
   div.innerHTML = html;
   const bSel = div.querySelector('.bl-board');
@@ -431,7 +431,13 @@ function buildRepairs(obj) {
       const tgl = row.querySelector('.rtoggle');
       if (tgl) tgl.addEventListener('change', updateRepairsSummary);
       const lines = row.querySelector('.board-lines');
-      const customLabor = !!info.custom_labor;
+      const customLabor = info.custom_labor ? ('Price/' + (info.unit === 'each' ? 'post' : (info.unit || 'pc'))) : false;
+      if (info.custom_labor && info.labor_note) {
+        const note = document.createElement('div');
+        note.className = 'hint';
+        note.textContent = info.labor_note;
+        row.insertBefore(note, lines);
+      }
       row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
         cb.addEventListener('change', () => {
           if (cb.checked) {

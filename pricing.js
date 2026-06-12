@@ -411,6 +411,8 @@ export const REPAIR_ITEMS = {
   stair_stringer:  { label: "Replace stair stringer",        unit: "each",    labor: { ground: 200, rooftop: 200 },
                        // 8 steps or more bumps the labor rate
                        toggle: { id: "over_8_steps", label: "8 steps or more", labor: { ground: 300, rooftop: 300 } } },
+  fascia_board:    { label: "Replace fascia board",          unit: "board",   custom_labor: true,
+                       labor_note: "Use $200 to $400 per board depending on difficulty" },
   joist:           { label: "Replace / sister joist",        unit: "each",    price: 60 },
   beam:            { label: "Replace / reinforce beam",      unit: "each",    price: 150 },
   concrete_footer: { label: "Concrete footer (no digging out old footer)", mode: "qty",
@@ -421,7 +423,6 @@ export const REPAIR_ITEMS = {
                          { max: 5,  price: 300 },   // 2–5 footers
                          { max: 15, price: 230 },   // 6–15 footers
                        ] },
-  fascia_board:    { label: "Replace fascia board",          unit: "lin ft",  price: 6 },
 };
 
 // Wood/material options selectable per repair item (captured for now; pricing later).
