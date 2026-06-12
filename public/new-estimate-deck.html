@@ -58,6 +58,8 @@
   .board-line .bl-matprice { width: 110px; text-align: center; }
   .board-line .bl-remove { background: none; border: none; color: var(--amber); font-size: 1.3rem; cursor: pointer; padding: 0 0.25rem; line-height: 1; }
   .addmore { background: none; border: none; color: var(--amber); font-weight: 600; cursor: pointer; padding: 0.5rem 0; font-size: 0.9rem; }
+  .addblock { display: block; width: 100%; background: #fff; border: 2px dashed var(--amber); color: var(--amber); font-weight: 600; cursor: pointer; padding: 0.6rem; border-radius: var(--radius); font-size: 0.9rem; margin-top: 0.6rem; }
+  .repair-row .block-remove { background: none; border: none; color: #b3261e; font-weight: 600; cursor: pointer; font-size: 0.82rem; }
   .rb-line { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--line); }
   .rb-line:first-child { border-top: none; }
   .rb-line .rb-name { font-weight: 600; color: var(--dark); font-size: 0.9rem; }
@@ -451,11 +453,48 @@ function makeOptionLine(optId, label) {
   div.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
   return div;
 }
+function buildOtherBlock(id, info, removable) {
+  const row = document.createElement('div');
+  row.className = 'repair-row';
+  row.dataset.item = id;
+  row.dataset.mode = 'other';
+  const mats = otherMats().map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
+  row.innerHTML = '<div class="rhead"><div class="rlabel"></div>' +
+    (removable ? '<button type="button" class="block-remove">Remove</button>' : '') + '</div>' +
+    '<div class="field" style="margin:0.5rem 0 0"><input class="other-desc" type="text" placeholder="What is being replaced or repaired?"></div>' +
+    '<div class="repair-mats">' + mats + '</div>' +
+    (info.labor_note ? '<div class="hint">' + info.labor_note + '</div>' : '') +
+    '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
+  row.querySelector('.rlabel').textContent = info.label;
+  row.querySelector('.other-desc').addEventListener('input', updateRepairsSummary);
+  const lines = row.querySelector('.board-lines');
+  row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) { const ln = makeOtherLine(cb.dataset.mat, false); ln.dataset.primary = cb.dataset.mat; lines.appendChild(ln); }
+      else { const ln = lines.querySelector('.board-line[data-primary="' + cb.dataset.mat + '"]'); if (ln) ln.remove(); }
+      updateRepairsSummary();
+    });
+  });
+  row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeOtherLine('', true)); });
+  const br = row.querySelector('.block-remove');
+  if (br) br.addEventListener('click', () => { row.remove(); updateRepairsSummary(); });
+  return row;
+}
 function buildRepairs(obj) {
   const list = document.getElementById('repairsList');
   list.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
     const mode = info.mode || 'material';
+    if (mode === 'other') {
+      list.appendChild(buildOtherBlock(id, info, false));
+      const addBlock = document.createElement('button');
+      addBlock.type = 'button';
+      addBlock.className = 'addblock';
+      addBlock.textContent = '+ Add another "' + info.label + '" block';
+      addBlock.addEventListener('click', () => { list.insertBefore(buildOtherBlock(id, info, true), addBlock); updateRepairsSummary(); });
+      list.appendChild(addBlock);
+      continue;
+    }
     const row = document.createElement('div');
     row.className = 'repair-row' + (mode === 'flag' ? ' repair-flag' : '');
     row.dataset.item = id;
@@ -465,24 +504,6 @@ function buildRepairs(obj) {
       row.innerHTML = '<div class="rlabel"></div><label class="repair-toggle"><input type="checkbox" class="rflag"> ' + info.flag_label + '</label>';
       row.querySelector('.rlabel').textContent = info.label;
       row.querySelector('.rflag').addEventListener('change', updateRepairsSummary);
-    } else if (mode === 'other') {
-      const mats = otherMats().map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
-      row.innerHTML = '<div class="rlabel"></div>' +
-        '<div class="field" style="margin:0.5rem 0 0"><input class="other-desc" type="text" placeholder="What is being replaced or repaired?"></div>' +
-        '<div class="repair-mats">' + mats + '</div>' +
-        (info.labor_note ? '<div class="hint">' + info.labor_note + '</div>' : '') +
-        '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
-      row.querySelector('.rlabel').textContent = info.label;
-      row.querySelector('.other-desc').addEventListener('input', updateRepairsSummary);
-      const lines = row.querySelector('.board-lines');
-      row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          if (cb.checked) { const ln = makeOtherLine(cb.dataset.mat, false); ln.dataset.primary = cb.dataset.mat; lines.appendChild(ln); }
-          else { const ln = lines.querySelector('.board-line[data-primary="' + cb.dataset.mat + '"]'); if (ln) ln.remove(); }
-          updateRepairsSummary();
-        });
-      });
-      row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeOtherLine('', true)); });
     } else if (mode === 'options') {
       const opts = Object.entries(info.options).map(([oid, o]) => '<label><input type="checkbox" data-opt="' + oid + '"> ' + o.label + '</label>').join('');
       row.innerHTML = '<div class="rlabel"></div><div class="repair-mats">' + opts + '</div><div class="board-lines"></div>';
