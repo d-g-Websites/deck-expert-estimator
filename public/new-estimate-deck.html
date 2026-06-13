@@ -229,8 +229,14 @@
     </section>
 
     <section class="card">
-      <h2>Discount</h2>
-      <div class="field"><label for="discount">Discount ($)</label><div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div></div>
+      <h2>Other Fields</h2>
+      <div class="field"><label for="other_fields">Add a field</label>
+        <select id="other_fields">
+          <option value="">Select…</option>
+          <option value="discount">Discount ($)</option>
+        </select>
+      </div>
+      <div class="field" id="discountField" style="display:none"><label for="discount">Discount ($)</label><div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div></div>
     </section>
 
     <section class="card total-card">
@@ -990,6 +996,12 @@ function updateTotal() {
 }
 [els.sqft, els.discount, els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
 els.location.addEventListener('change', updateTotal);
+$('other_fields').addEventListener('change', (e) => {
+  const show = e.target.value === 'discount';
+  $('discountField').style.display = show ? 'block' : 'none';
+  if (!show) els.discount.value = '';
+  updateTotal();
+});
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updateTotal();
