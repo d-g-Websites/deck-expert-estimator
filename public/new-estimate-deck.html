@@ -416,14 +416,15 @@ function boardOptions(material) {
   for (const [bid, b] of Object.entries(cat.items)) html += '<option value="' + bid + '">' + b.label + '</option>';
   return html;
 }
-function makeBoardLine(material, withSelector, customLabor) {
+function makeBoardLine(material, withSelector, customLabor, mats) {
+  const matList = mats || REPAIR_MATERIALS;
   const div = document.createElement('div');
   div.className = 'board-line';
   if (material) div.dataset.material = material;
   let html = '';
   if (withSelector) {
     html += '<select class="bl-material"><option value="">Material…</option>' +
-      REPAIR_MATERIALS.map(m => '<option value="' + m.id + '"' + (m.id === material ? ' selected' : '') + '>' + m.label + '</option>').join('') + '</select>';
+      matList.map(m => '<option value="' + m.id + '"' + (m.id === material ? ' selected' : '') + '>' + m.label + '</option>').join('') + '</select>';
   } else {
     html += '<span class="bl-matlabel">' + matLabel(material) + '</span>';
   }
@@ -523,7 +524,8 @@ function buildRepairs(obj) {
       row.querySelector('.rlabel').textContent = info.label;
       row.querySelector('.bl-qty').addEventListener('input', updateRepairsSummary);
     } else {
-      const mats = REPAIR_MATERIALS.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
+      const matList = info.materials ? REPAIR_MATERIALS.filter(m => info.materials.includes(m.id)) : REPAIR_MATERIALS;
+      const mats = matList.map(m => '<label><input type="checkbox" data-mat="' + m.id + '"> ' + m.label + '</label>').join('');
       const toggleHtml = info.toggle ? '<label class="repair-toggle"><input type="checkbox" class="rtoggle"> ' + info.toggle.label + '</label>' : '';
       row.innerHTML = '<div class="rhead"><div class="rlabel"></div>' + toggleHtml + '</div><div class="repair-mats">' + mats + '</div>' +
         '<div class="board-lines"></div><button type="button" class="addmore">+ Add more</button>';
@@ -541,7 +543,7 @@ function buildRepairs(obj) {
       row.querySelectorAll('.repair-mats input[data-mat]').forEach(cb => {
         cb.addEventListener('change', () => {
           if (cb.checked) {
-            const ln = makeBoardLine(cb.dataset.mat, false, customLabor);
+            const ln = makeBoardLine(cb.dataset.mat, false, customLabor, matList);
             ln.dataset.primary = cb.dataset.mat;
             lines.appendChild(ln);
           } else {
@@ -551,7 +553,7 @@ function buildRepairs(obj) {
           updateRepairsSummary();
         });
       });
-      row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true, customLabor)); });
+      row.querySelector('.addmore').addEventListener('click', () => { lines.appendChild(makeBoardLine('', true, customLabor, matList)); });
     }
     list.appendChild(row);
   }

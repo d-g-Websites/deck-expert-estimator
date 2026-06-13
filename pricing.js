@@ -404,9 +404,11 @@ export const REPAIR_ITEMS = {
   baluster:        { label: "Replace baluster / spindle",    unit: "each",    price: 8, labor: { ground: 10, rooftop: 10 } },
   post:            { label: "Replace railing post",          unit: "each",    price: 75, labor: { ground: 200, rooftop: 250 } },
   support_post:    { label: "Replace support post",          unit: "each",    labor: { ground: 250, rooftop: 300 },
+                       materials: ["cedar", "pressure_treated"],
                        // over 8 ft bumps the labor rate
                        toggle: { id: "over_8ft", label: "Over 8 feet", labor: { ground: 300, rooftop: 350 } } },
-  support_post_ml: { label: "Replace support post — multilevel deck", unit: "each", custom_labor: true },
+  support_post_ml: { label: "Replace support post — multilevel deck", unit: "each", custom_labor: true,
+                       materials: ["cedar", "pressure_treated"] },
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20, labor: { ground: 80, rooftop: 120 } },
   stair_stringer:  { label: "Replace stair stringer",        unit: "each",    labor: { ground: 200, rooftop: 200 },
                        // 8 steps or more bumps the labor rate
