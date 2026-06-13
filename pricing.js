@@ -411,6 +411,7 @@ export const REPAIR_ITEMS = {
                        materials: ["cedar", "pressure_treated"] },
   stair_tread:     { label: "Replace stair tread",           unit: "each",    price: 20, labor: { ground: 80, rooftop: 120 } },
   stair_stringer:  { label: "Replace stair stringer",        unit: "each",    labor: { ground: 200, rooftop: 200 },
+                       materials: ["cedar", "pressure_treated"],
                        // 8 steps or more bumps the labor rate
                        toggle: { id: "over_8_steps", label: "8 steps or more", labor: { ground: 300, rooftop: 300 } } },
   fascia_board:    { label: "Replace fascia board",          unit: "board",   custom_labor: true,
