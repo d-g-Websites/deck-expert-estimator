@@ -73,6 +73,8 @@
   .repair-row.repair-flag .repair-toggle input[type=checkbox] { accent-color: #b3261e; }
   .card.debris-card { background: #fff4e6; border-color: #f3d6a8; }
   .card.project-card { background: #eef7ef; border-color: #cfe6d2; }
+  .of-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3rem; }
+  .of-remove { background: none; border: none; color: #b3261e; font-weight: 600; cursor: pointer; font-size: 0.82rem; }
 </style>
 </head>
 <body>
@@ -180,7 +182,6 @@
         <div class="hint" style="margin-top:0.6rem">Uses the square footage &amp; railing from Project. Square footage is horizontal deck surface only.</div>
       </div>
       <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="chicago_surcharge"> Chicago or town by Michigan (+10%)</label></div>
-      <div class="field" style="margin-top:0.85rem"><label for="cleaning_pct">Add %</label><input type="number" id="cleaning_pct" step="1" min="0" placeholder="0" style="max-width:130px"><div class="hint">Internal — not shown to customer.</div></div>
     </section>
 
     <section class="card">
@@ -197,7 +198,6 @@
           <div class="hint" id="verticalSqftHint" style="margin-top:0.4rem"></div>
         </div>
       </div>
-      <div class="field" style="margin-top:0.85rem"><label for="sanding_pct">Add %</label><input type="number" id="sanding_pct" step="1" min="0" placeholder="0" style="max-width:130px"><div class="hint">Internal — not shown to customer.</div></div>
     </section>
 
     <section class="card">
@@ -212,7 +212,6 @@
         </div>
         <div id="stainLaborNote" class="notice" style="display:none;margin-top:0.5rem"></div>
         <div class="hint">Stain material &amp; supplies are added at cost, based on the deck square footage. Railing/verticals are priced via the “Railing” option in Project.</div>
-        <div class="field" style="margin-top:0.85rem"><label for="staining_pct">Add %</label><input type="number" id="staining_pct" step="1" min="0" placeholder="0" style="max-width:130px"><div class="hint">Internal — not shown to customer.</div></div>
       </div>
     </section>
 
@@ -234,9 +233,22 @@
         <select id="other_fields">
           <option value="">Select…</option>
           <option value="discount">Discount ($)</option>
+          <option value="multiplier">Multiplier (%)</option>
         </select>
       </div>
-      <div class="field" id="discountField" style="display:none"><label for="discount">Discount ($)</label><div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div></div>
+      <div id="discountField" style="display:none">
+        <div class="of-head"><label for="discount" style="margin:0">Discount ($)</label><button type="button" class="of-remove" data-target="discount">Remove</button></div>
+        <div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      </div>
+      <div id="multiplierField" style="display:none">
+        <div class="of-head"><span class="sub-label" style="margin:0">Multiplier (%)</span><button type="button" class="of-remove" data-target="multiplier">Remove</button></div>
+        <div class="hint" style="margin-bottom:0.5rem">Internal — not shown to customer. Adds a % onto each section's total.</div>
+        <div class="grid-2">
+          <div class="field"><label for="cleaning_pct">Cleaning %</label><input type="number" id="cleaning_pct" step="1" min="0" placeholder="0"></div>
+          <div class="field"><label for="sanding_pct">Sanding %</label><input type="number" id="sanding_pct" step="1" min="0" placeholder="0"></div>
+          <div class="field"><label for="staining_pct">Staining %</label><input type="number" id="staining_pct" step="1" min="0" placeholder="0"></div>
+        </div>
+      </div>
     </section>
 
     <section class="card total-card">
@@ -997,11 +1009,16 @@ function updateTotal() {
 [els.sqft, els.discount, els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
 els.location.addEventListener('change', updateTotal);
 $('other_fields').addEventListener('change', (e) => {
-  const show = e.target.value === 'discount';
-  $('discountField').style.display = show ? 'block' : 'none';
-  if (!show) els.discount.value = '';
-  updateTotal();
+  const v = e.target.value;
+  if (v === 'discount') $('discountField').style.display = 'block';
+  if (v === 'multiplier') $('multiplierField').style.display = 'block';
+  e.target.value = '';
 });
+document.querySelectorAll('.of-remove').forEach(btn => btn.addEventListener('click', () => {
+  if (btn.dataset.target === 'discount') { $('discountField').style.display = 'none'; els.discount.value = ''; }
+  if (btn.dataset.target === 'multiplier') { $('multiplierField').style.display = 'none'; els.cleanMult.value = ''; els.sandMult.value = ''; els.stainMult.value = ''; }
+  updateTotal();
+}));
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updateTotal();
