@@ -906,13 +906,13 @@ function computeMaterials() {
   const horizontal = num(els.sqft);
   if (cleaningEnabled.checked) {
     const s = MATERIALS.supplies.cleaner_brightener;
-    total += s.price * Math.max(1, horizontal / s.per_sqft);
+    total += s.price * Math.max(1, Math.ceil(horizontal / s.per_sqft));
   }
   const cond = SANDING && SANDING[els.sandingCond.value];
   if (cond && cond.supply && !noHorizSanding()) {
     const key = { never: 'sand_never', prior: 'sand_prior', removal: 'sand_removal' }[cond.supply];
     const s = MATERIALS.supplies[key];
-    if (s) total += s.price * Math.max(1, horizontal / s.per_sqft);
+    if (s) total += s.price * Math.max(1, Math.ceil(horizontal / s.per_sqft));
   }
   if (stainingEnabled.checked) {
     const combined = horizontal;
@@ -922,7 +922,7 @@ function computeMaterials() {
       const mb = (matKey && !stainCustomerSupplied.checked) ? MATERIALS.stain_brands[matKey] : null;
       if (mb) total += Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
       const ss = MATERIALS.supplies.stain_supplies;
-      total += ss.price * Math.max(1, combined / ss.per_sqft);
+      total += ss.price * Math.max(1, Math.ceil(combined / ss.per_sqft));
     }
   }
   return { total: Math.round(total * 100) / 100 };

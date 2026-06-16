@@ -161,8 +161,9 @@ export const MATERIALS_PRICING = {
 };
 
 const round2 = (v) => Math.round(v * 100) / 100;
+// Supplies are sold per whole unit (per_sqft block) — round the count UP, min 1.
 function proratedSupply(item, area) {
-  return round2(item.price * Math.max(1, (Number(area) || 0) / item.per_sqft));
+  return round2(item.price * Math.max(1, Math.ceil((Number(area) || 0) / item.per_sqft)));
 }
 
 // Compute materials & supplies cost. Each component activates only when its
