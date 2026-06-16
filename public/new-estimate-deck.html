@@ -233,7 +233,6 @@
         <select id="other_fields">
           <option value="">Select…</option>
           <option value="discount">Discount ($)</option>
-          <option value="multiplier">Multiplier (%) — internal</option>
         </select>
       </div>
       <div id="discountField" style="display:none">
@@ -241,6 +240,7 @@
         <div class="field"><input type="text" id="discount_desc" placeholder="Describe (e.g. Senior Discount, Spring Special)"></div>
         <div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
       </div>
+      <button type="button" class="btn secondary" id="openMultiplier" style="width:100%;margin-top:0.85rem">→ Internal multiplier (%)</button>
     </section>
 
     <section class="card total-card">
@@ -1022,15 +1022,14 @@ function updateTotal() {
 [els.sqft, els.discount, $('discount_desc'), els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
 els.location.addEventListener('change', updateTotal);
 $('other_fields').addEventListener('change', (e) => {
-  const v = e.target.value;
-  if (v === 'discount') $('discountField').style.display = 'block';
-  if (v === 'multiplier') openMultiplier();
+  if (e.target.value === 'discount') $('discountField').style.display = 'block';
   e.target.value = '';
 });
 document.querySelectorAll('.of-remove').forEach(btn => btn.addEventListener('click', () => {
   if (btn.dataset.target === 'discount') { $('discountField').style.display = 'none'; els.discount.value = ''; $('discount_desc').value = ''; }
   updateTotal();
 }));
+$('openMultiplier').addEventListener('click', openMultiplier);
 function openMultiplier() { $('multiplierScreen').style.display = 'block'; window.scrollTo(0, 0); }
 function closeMultiplier() { $('multiplierScreen').style.display = 'none'; updateTotal(); window.scrollTo(0, 0); }
 $('multiplierBack').addEventListener('click', (e) => { e.preventDefault(); closeMultiplier(); });
