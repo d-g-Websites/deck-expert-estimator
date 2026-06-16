@@ -272,6 +272,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const railing_lf = b.railing_lf ? parseFloat(b.railing_lf) : 0;
     const stairs_count = b.stairs_count ? parseInt(b.stairs_count, 10) : 0;
     const discount = b.discount ? parseFloat(b.discount) : 0;
+    const discount_desc = (b.discount_desc || "").toString().slice(0, 120).trim() || null;
     const source_hcp_estimate_id = (b.source_hcp_estimate_id || "").trim() || null;
     const structures_other = (b.structures_other || "").trim() || null;
     // Cleaning inputs
@@ -396,7 +397,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       staining_enabled, stain_process, stain_customer_supplied, vertical_sqft: stain_vertical_sqft,
       cleaning_multiplier, sanding_multiplier, staining_multiplier,
       repairs, debris_removal,
-      discount, extra_items: cleanExtras,
+      discount, discount_desc, extra_items: cleanExtras,
     });
 
     const result = db.prepare(`
@@ -409,8 +410,8 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
         staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft, staining_multiplier,
         repairs, repairs_notes, debris_removal,
-        extra_items, discount_cents, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        extra_items, discount_cents, discount_desc, pricing_snapshot, source_hcp_estimate_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
@@ -420,7 +421,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
       staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft, staining_multiplier,
       JSON.stringify(repairs), repairs_notes, debris_removal,
-      JSON.stringify(cleanExtras), Math.round(discount * 100), JSON.stringify(breakdown), source_hcp_estimate_id
+      JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown), source_hcp_estimate_id
     );
     const estimateId = result.lastInsertRowid;
 

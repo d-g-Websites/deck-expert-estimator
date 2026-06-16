@@ -233,21 +233,13 @@
         <select id="other_fields">
           <option value="">Select…</option>
           <option value="discount">Discount ($)</option>
-          <option value="multiplier">Multiplier (%)</option>
+          <option value="multiplier">Multiplier (%) — internal</option>
         </select>
       </div>
       <div id="discountField" style="display:none">
         <div class="of-head"><label for="discount" style="margin:0">Discount ($)</label><button type="button" class="of-remove" data-target="discount">Remove</button></div>
+        <div class="field"><input type="text" id="discount_desc" placeholder="Describe (e.g. Senior Discount, Spring Special)"></div>
         <div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-      </div>
-      <div id="multiplierField" style="display:none">
-        <div class="of-head"><span class="sub-label" style="margin:0">Multiplier (%)</span><button type="button" class="of-remove" data-target="multiplier">Remove</button></div>
-        <div class="hint" style="margin-bottom:0.5rem">Internal — not shown to customer. Adds a % onto each section's total.</div>
-        <div class="grid-2">
-          <div class="field"><label for="cleaning_pct">Cleaning %</label><input type="number" id="cleaning_pct" step="1" min="0" placeholder="0"></div>
-          <div class="field"><label for="sanding_pct">Sanding %</label><input type="number" id="sanding_pct" step="1" min="0" placeholder="0"></div>
-          <div class="field"><label for="staining_pct">Staining %</label><input type="number" id="staining_pct" step="1" min="0" placeholder="0"></div>
-        </div>
       </div>
     </section>
 
@@ -303,6 +295,25 @@
       <div id="repairsBreakdownBody"></div>
     </div>
     <button type="button" class="btn primary" id="repairsDone">Done — back to estimate</button>
+  </main>
+</div>
+
+<div id="multiplierScreen" class="repairs-screen" style="display:none">
+  <div class="topbar">
+    <a href="#" class="back" id="multiplierBack">← Back to estimate</a>
+    <h1>Multiplier (%)</h1>
+  </div>
+  <main>
+    <div class="card">
+      <h2>Internal multiplier</h2>
+      <div class="hint" style="margin-bottom:0.75rem">Internal — not shown to the customer. Adds a % onto each section's total. Leave blank for none.</div>
+      <div class="grid-2">
+        <div class="field"><label for="cleaning_pct">Cleaning %</label><input type="number" id="cleaning_pct" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label for="sanding_pct">Sanding %</label><input type="number" id="sanding_pct" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label for="staining_pct">Staining %</label><input type="number" id="staining_pct" step="1" min="0" placeholder="0"></div>
+      </div>
+    </div>
+    <button type="button" class="btn primary" id="multiplierDone">Done — back to estimate</button>
   </main>
 </div>
 
@@ -1003,22 +1014,27 @@ function updateTotal() {
   sr('extrasRow', 'extrasTotal', extras);
   document.getElementById('subtotal').textContent = fmt(subtotal);
   document.getElementById('discountRow').style.display = discount > 0 ? 'flex' : 'none';
+  const dDesc = $('discount_desc').value.trim();
+  document.querySelector('#discountRow span').textContent = 'Discount' + (dDesc ? ' (' + dDesc + ')' : '');
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.discount, els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.discount, $('discount_desc'), els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
 els.location.addEventListener('change', updateTotal);
 $('other_fields').addEventListener('change', (e) => {
   const v = e.target.value;
   if (v === 'discount') $('discountField').style.display = 'block';
-  if (v === 'multiplier') $('multiplierField').style.display = 'block';
+  if (v === 'multiplier') openMultiplier();
   e.target.value = '';
 });
 document.querySelectorAll('.of-remove').forEach(btn => btn.addEventListener('click', () => {
-  if (btn.dataset.target === 'discount') { $('discountField').style.display = 'none'; els.discount.value = ''; }
-  if (btn.dataset.target === 'multiplier') { $('multiplierField').style.display = 'none'; els.cleanMult.value = ''; els.sandMult.value = ''; els.stainMult.value = ''; }
+  if (btn.dataset.target === 'discount') { $('discountField').style.display = 'none'; els.discount.value = ''; $('discount_desc').value = ''; }
   updateTotal();
 }));
+function openMultiplier() { $('multiplierScreen').style.display = 'block'; window.scrollTo(0, 0); }
+function closeMultiplier() { $('multiplierScreen').style.display = 'none'; updateTotal(); window.scrollTo(0, 0); }
+$('multiplierBack').addEventListener('click', (e) => { e.preventDefault(); closeMultiplier(); });
+$('multiplierDone').addEventListener('click', closeMultiplier);
 cleaningEnabled.addEventListener('change', () => {
   document.getElementById('cleaningOpts').style.display = cleaningEnabled.checked ? 'block' : 'none';
   updateTotal();
@@ -1164,6 +1180,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('debris_removal', String(num($('debris_removal'))));
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
+  fd.append('discount_desc', $('discount_desc').value.trim());
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
   for (const p of photos) fd.append('photos', p.file);
   if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }

@@ -77,6 +77,7 @@ db.exec(`
 
     extra_items TEXT NOT NULL DEFAULT '[]',   -- JSON array of {description, price}
     discount_cents INTEGER NOT NULL DEFAULT 0,
+    discount_desc TEXT,
 
     -- Frozen price breakdown at save time (so historical estimates don't shift
     -- when the rate config changes). JSON produced by pricing.js.
@@ -138,6 +139,7 @@ const MIGRATIONS = {
   repairs: "TEXT NOT NULL DEFAULT '[]'",
   repairs_notes: "TEXT",
   debris_removal: "REAL NOT NULL DEFAULT 0",
+  discount_desc: "TEXT",
 };
 const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
 for (const [name, ddl] of Object.entries(MIGRATIONS)) {

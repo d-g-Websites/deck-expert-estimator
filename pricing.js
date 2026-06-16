@@ -577,6 +577,7 @@ export function computeDeckEstimate(input) {
     extras_list: extras,
     subtotal,
     discount,
+    discount_label: (input.discount_desc || "").toString().trim() || null,
     total,
   };
 }

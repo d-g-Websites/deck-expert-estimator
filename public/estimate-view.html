@@ -109,7 +109,7 @@ function render(e) {
     ((mat.total || 0) > 0 ? row('Materials & supplies', fmt(mat.total)) : '') +
     (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +
     '<div class="row subtotal"><span class="label">Subtotal</span><span class="value">' + fmt(b.subtotal || 0) + '</span></div>' +
-    (b.discount > 0 ? row('Discount', '-' + fmt(b.discount)) : '') +
+    (b.discount > 0 ? row('Discount' + (b.discount_label ? ' (' + b.discount_label + ')' : ''), '-' + fmt(b.discount)) : '') +
     '<div class="row total"><span class="label">Total</span><span class="value">' + fmt(b.total || 0) + '</span></div></section>';
 
   let renderHtml = '';
