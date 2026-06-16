@@ -291,6 +291,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const stain_color = (b.stain_color || "").trim() || null;
     const stain_custom_desc = (b.stain_custom_desc || "").trim() || null;
     const stain_customer_supplied = b.stain_customer_supplied ? 1 : 0;
+    const stain_vertical = b.stain_vertical ? 1 : 0;
     const stain_vertical_sqft = b.stain_vertical_sqft ? parseFloat(b.stain_vertical_sqft) : 0;
     // Discreet per-section adjustment multipliers (internal)
     const cleaning_multiplier = b.cleaning_multiplier ? parseFloat(b.cleaning_multiplier) : 1;
@@ -394,7 +395,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       wood_type, deck_location, cleaning_enabled, surface_sqft, has_railing, has_metal_spindles, multilevel_levels,
       light_clean, chicago_surcharge, pergola_gazebo_size,
       sanding_condition, vertical_sanding, vertical_length, vertical_height,
-      staining_enabled, stain_process, stain_customer_supplied, vertical_sqft: stain_vertical_sqft,
+      staining_enabled, stain_process, stain_customer_supplied, stain_vertical, stain_vertical_sqft,
       cleaning_multiplier, sanding_multiplier, staining_multiplier,
       repairs, debris_removal,
       discount, discount_desc, extra_items: cleanExtras,
@@ -408,10 +409,10 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         structures, structures_other, prior_finish,
         cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size, cleaning_multiplier,
         sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
-        staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft, staining_multiplier,
+        staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical, stain_vertical_sqft, staining_multiplier,
         repairs, repairs_notes, debris_removal,
         extra_items, discount_cents, discount_desc, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
@@ -419,7 +420,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       JSON.stringify(structures), structures_other, prior_finish,
       cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size, cleaning_multiplier,
       sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
-      staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical_sqft, staining_multiplier,
+      staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical, stain_vertical_sqft, staining_multiplier,
       JSON.stringify(repairs), repairs_notes, debris_removal,
       JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown), source_hcp_estimate_id
     );

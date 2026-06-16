@@ -317,9 +317,12 @@ export function computeStaining(input) {
   const mult = (brand.story_multiplier[stories] || brand.story_multiplier[1])[tier];
 
   const labor = base * mult;
+  // Vertical staining (railing/skirting/lattice) — labor only, at the deck's effective $/sq ft.
+  const vSqft = input.stain_vertical ? (Number(input.stain_vertical_sqft) || 0) : 0;
+  const vertical = (sqft > 0 ? labor / sqft : 0) * vSqft;
   const pergola = brand.pergola_gazebo[input.pergola_gazebo_size] || 0;
 
-  const subtotal = labor + pergola;
+  const subtotal = labor + vertical + pergola;
   const chicago_surcharge = input.chicago_surcharge ? subtotal * CLEANING_PRICING.chicago_surcharge : 0;
   const metal_surcharge = (input.has_metal_spindles && input.has_railing && brand.metal_spindles_surcharge)
     ? subtotal * brand.metal_spindles_surcharge : 0;
@@ -329,7 +332,7 @@ export function computeStaining(input) {
 
   return {
     enabled: true, priced: true, process: input.stain_process, base, story_multiplier: mult,
-    labor: round2(labor), pergola_gazebo: pergola,
+    labor: round2(labor), vertical: round2(vertical), vertical_sqft: vSqft, pergola_gazebo: pergola,
     chicago_surcharge: round2(chicago_surcharge), metal_surcharge: round2(metal_surcharge),
     surcharge: round2(surcharge), adj_multiplier: adj, total: round2(total),
   };

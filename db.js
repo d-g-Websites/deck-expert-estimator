@@ -62,6 +62,7 @@ db.exec(`
     stain_color TEXT,
     stain_custom_desc TEXT,
     stain_customer_supplied INTEGER NOT NULL DEFAULT 0,
+    stain_vertical INTEGER NOT NULL DEFAULT 0,
     stain_vertical_sqft REAL DEFAULT 0,
     staining_multiplier REAL DEFAULT 1,
 
@@ -134,6 +135,7 @@ const MIGRATIONS = {
   stain_color: "TEXT",
   stain_custom_desc: "TEXT",
   stain_customer_supplied: "INTEGER NOT NULL DEFAULT 0",
+  stain_vertical: "INTEGER NOT NULL DEFAULT 0",
   stain_vertical_sqft: "REAL DEFAULT 0",
   staining_multiplier: "REAL DEFAULT 1",
   repairs: "TEXT NOT NULL DEFAULT '[]'",

@@ -212,6 +212,13 @@
         </div>
         <div id="stainLaborNote" class="notice" style="display:none;margin-top:0.5rem"></div>
         <div class="hint">Stain material &amp; supplies are added at cost, based on the deck square footage. Railing/verticals are priced via the “Railing” option in Project.</div>
+        <div class="toggle" style="margin-top:0.5rem"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_vertical"> Vertical staining/sealing (railing, skirting, lattice, etc.)</label>
+          <div class="conditional" id="stainVerticalWrap" style="display:none">
+            <label class="sub-label" for="stain_vertical_sqft">Vertical square footage</label>
+            <input type="number" id="stain_vertical_sqft" inputmode="decimal" step="1" min="0" placeholder="0" style="max-width:160px">
+            <div class="hint">Labor only — priced at the deck's effective $/sq ft.</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -968,11 +975,14 @@ function computeStaining() {
   const stories = lv >= 2 ? Math.min(3, lv) : 1;
   const mult = (brand.story_multiplier[stories] || brand.story_multiplier[1])[tier];
   const labor = base * mult;
+  // Vertical staining (labor only): charged at the deck's effective $/sq ft.
+  const vSqft = $('stain_vertical').checked ? num($('stain_vertical_sqft')) : 0;
+  const vertical = (sqft > 0 ? (labor / sqft) : 0) * vSqft;
   const pergola = brand.pergola_gazebo[els.pergola.value] || 0;
-  const subtotal = labor + pergola;
+  const subtotal = labor + vertical + pergola;
   const chicagoS = chicago.checked ? subtotal * CLEANING.chicago_surcharge : 0;
   const metalS = (metalSpindles.checked && hasRailing.checked && brand.metal_spindles_surcharge) ? subtotal * brand.metal_spindles_surcharge : 0;
-  return { enabled: true, priced: true, labor, pergola, chicago_surcharge: chicagoS, metal_surcharge: metalS, surcharge: chicagoS + metalS, total: (subtotal + chicagoS + metalS) * adjMult(els.stainMult) };
+  return { enabled: true, priced: true, labor, vertical, pergola, chicago_surcharge: chicagoS, metal_surcharge: metalS, surcharge: chicagoS + metalS, total: (subtotal + chicagoS + metalS) * adjMult(els.stainMult) };
 }
 
 function computeSanding() {
@@ -1050,6 +1060,11 @@ stainingEnabled.addEventListener('change', () => {
   updateStainUI(); updateTotal();
 });
 stainCustomerSupplied.addEventListener('change', updateTotal);
+$('stain_vertical').addEventListener('change', () => {
+  $('stainVerticalWrap').style.display = $('stain_vertical').checked ? 'block' : 'none';
+  updateTotal();
+});
+$('stain_vertical_sqft').addEventListener('input', updateTotal);
 metalSpindles.addEventListener('change', updateTotal);
 hasRailing.addEventListener('change', () => { if (!hasRailing.checked) metalSpindles.checked = false; });
 
@@ -1167,6 +1182,8 @@ form.addEventListener('submit', async (e) => {
   fd.append('vertical_length', verticalSanding.checked ? String(num(els.vlen)) : '0');
   fd.append('vertical_height', verticalSanding.checked ? String(num(els.vhgt)) : '0');
   fd.append('staining_enabled', stainingEnabled.checked ? '1' : '');
+  fd.append('stain_vertical', $('stain_vertical').checked ? '1' : '');
+  fd.append('stain_vertical_sqft', $('stain_vertical').checked ? String(num($('stain_vertical_sqft'))) : '0');
   fd.append('stain_process', els.stainProcess.value);
   fd.append('stain_color', els.stainColor.value);
   fd.append('stain_custom_desc', els.stainCustomDesc.value.trim());
