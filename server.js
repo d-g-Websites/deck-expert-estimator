@@ -45,6 +45,7 @@ function requireAuth(req, res, next) {
 
 // ---- Public assets (CSS) and health ----
 app.use("/static", express.static(path.join(PUBLIC_DIR, "static")));
+app.get("/favicon.ico", (req, res) => res.sendFile(path.join(PUBLIC_DIR, "static", "favicon.ico")));
 app.get("/health", (req, res) => res.json({ status: "healthy" }));
 
 // ---- Auth ----
