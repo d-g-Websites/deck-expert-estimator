@@ -64,6 +64,8 @@ db.exec(`
     stain_customer_supplied INTEGER NOT NULL DEFAULT 0,
     stain_vertical INTEGER NOT NULL DEFAULT 0,
     stain_vertical_sqft REAL DEFAULT 0,
+    stain_two_color INTEGER NOT NULL DEFAULT 0,
+    stain_two_color_mode TEXT,
     staining_multiplier REAL DEFAULT 1,
 
     -- Repairs / replacement (JSON array of {item_id, qty}) + notes
@@ -137,6 +139,8 @@ const MIGRATIONS = {
   stain_customer_supplied: "INTEGER NOT NULL DEFAULT 0",
   stain_vertical: "INTEGER NOT NULL DEFAULT 0",
   stain_vertical_sqft: "REAL DEFAULT 0",
+  stain_two_color: "INTEGER NOT NULL DEFAULT 0",
+  stain_two_color_mode: "TEXT",
   staining_multiplier: "REAL DEFAULT 1",
   repairs: "TEXT NOT NULL DEFAULT '[]'",
   repairs_notes: "TEXT",

@@ -292,6 +292,12 @@ function sqftTier6(sqft) {
   return 5;
 }
 
+// Two-color staining surcharge — % added onto the staining price.
+export const TWO_COLOR_SURCHARGE = {
+  solid_solid: { label: "Solid + Solid (+30%)", pct: 0.30 },
+  solid_rymar: { label: "Solid + Rymar (+60%)", pct: 0.60 },
+};
+
 // Staining/sealing labor for the chosen product. Same shape as cleaning:
 // base by sq-ft tier × railing, × story multiplier (from multi-level), + pergola
 // add-on, + Chicago 10%.
@@ -326,7 +332,9 @@ export function computeStaining(input) {
   const chicago_surcharge = input.chicago_surcharge ? subtotal * CLEANING_PRICING.chicago_surcharge : 0;
   const metal_surcharge = (input.has_metal_spindles && input.has_railing && brand.metal_spindles_surcharge)
     ? subtotal * brand.metal_spindles_surcharge : 0;
-  const surcharge = chicago_surcharge + metal_surcharge;
+  const tc = input.stain_two_color ? TWO_COLOR_SURCHARGE[input.stain_two_color_mode] : null;
+  const two_color_surcharge = tc ? subtotal * tc.pct : 0;
+  const surcharge = chicago_surcharge + metal_surcharge + two_color_surcharge;
   const adj = adjMult(input.staining_multiplier);
   const total = (subtotal + surcharge) * adj;
 
@@ -334,6 +342,7 @@ export function computeStaining(input) {
     enabled: true, priced: true, process: input.stain_process, base, story_multiplier: mult,
     labor: round2(labor), vertical: round2(vertical), vertical_sqft: vSqft, pergola_gazebo: pergola,
     chicago_surcharge: round2(chicago_surcharge), metal_surcharge: round2(metal_surcharge),
+    two_color_surcharge: round2(two_color_surcharge), two_color_mode: tc ? input.stain_two_color_mode : null,
     surcharge: round2(surcharge), adj_multiplier: adj, total: round2(total),
   };
 }

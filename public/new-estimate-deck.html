@@ -219,6 +219,13 @@
             <div class="hint">Labor only — priced at the deck's effective $/sq ft.</div>
           </div>
         </div>
+        <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_two_color"> 2-color staining</label>
+          <div class="conditional" id="stainTwoColorWrap" style="display:none">
+            <label class="sub-label" for="stain_two_color_mode">Combination</label>
+            <select id="stain_two_color_mode"></select>
+            <div class="hint">Adds a % onto the staining price.</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -336,12 +343,12 @@ const els = {
   sandingCond: $('sanding_condition'), vlen: $('vertical_length'), vhgt: $('vertical_height'),
   stainProcess: $('stain_process'), stainCustomDesc: $('stain_custom_desc'),
   cleanMult: $('cleaning_pct'), sandMult: $('sanding_pct'), stainMult: $('staining_pct'),
-  stainColor: $('stain_color'),
+  stainColor: $('stain_color'), stainTwoColorMode: $('stain_two_color_mode'),
 };
 const hasMultilevel = $('hasMultilevel'), hasRailing = $('hasRailing'), hasStairs = $('hasStairs'), stepsIncluded = $('steps_included');
 const cleaningEnabled = $('cleaning_enabled'), chicago = $('chicago_surcharge'), lightClean = $('light_clean');
 const verticalSanding = $('vertical_sanding'), stainingEnabled = $('staining_enabled'), stainCustomerSupplied = $('stain_customer_supplied'), metalSpindles = $('has_metal_spindles');
-let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null, LUMBER = null, SWATCH_BRANDS = null;
+let CLEANING = null, PGSIZES = null, MATERIALS = null, SANDING = null, WOODS = null, STAINING = null, PROCESSES = null, REPAIRS = null, LUMBER = null, SWATCH_BRANDS = null, TWOCOLOR = null;
 function noHorizSanding() {
   const w = WOODS && WOODS[els.wood.value];
   return !!(w && w.no_horizontal_sanding);
@@ -397,6 +404,8 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   fillSanding(data.sanding_conditions);
   fillStainProcesses(data.stain_processes);
   REPAIRS = data.repair_items; LUMBER = data.lumber; buildRepairs(data.repair_items);
+  TWOCOLOR = data.two_color_surcharge || {};
+  els.stainTwoColorMode.innerHTML = Object.entries(TWOCOLOR).map(([id, o]) => '<option value="' + id + '">' + o.label + '</option>').join('');
   buildStructures(data.structures);
   updateStainUI();
   updateTotal();
@@ -982,7 +991,10 @@ function computeStaining() {
   const subtotal = labor + vertical + pergola;
   const chicagoS = chicago.checked ? subtotal * CLEANING.chicago_surcharge : 0;
   const metalS = (metalSpindles.checked && hasRailing.checked && brand.metal_spindles_surcharge) ? subtotal * brand.metal_spindles_surcharge : 0;
-  return { enabled: true, priced: true, labor, vertical, pergola, chicago_surcharge: chicagoS, metal_surcharge: metalS, surcharge: chicagoS + metalS, total: (subtotal + chicagoS + metalS) * adjMult(els.stainMult) };
+  const tc = ($('stain_two_color').checked && TWOCOLOR) ? TWOCOLOR[els.stainTwoColorMode.value] : null;
+  const twoColorS = tc ? subtotal * tc.pct : 0;
+  const surcharge = chicagoS + metalS + twoColorS;
+  return { enabled: true, priced: true, labor, vertical, pergola, chicago_surcharge: chicagoS, metal_surcharge: metalS, two_color_surcharge: twoColorS, surcharge, total: (subtotal + surcharge) * adjMult(els.stainMult) };
 }
 
 function computeSanding() {
@@ -1065,6 +1077,11 @@ $('stain_vertical').addEventListener('change', () => {
   updateTotal();
 });
 $('stain_vertical_sqft').addEventListener('input', updateTotal);
+$('stain_two_color').addEventListener('change', () => {
+  $('stainTwoColorWrap').style.display = $('stain_two_color').checked ? 'block' : 'none';
+  updateTotal();
+});
+els.stainTwoColorMode.addEventListener('change', updateTotal);
 metalSpindles.addEventListener('change', updateTotal);
 hasRailing.addEventListener('change', () => { if (!hasRailing.checked) metalSpindles.checked = false; });
 
@@ -1184,6 +1201,8 @@ form.addEventListener('submit', async (e) => {
   fd.append('staining_enabled', stainingEnabled.checked ? '1' : '');
   fd.append('stain_vertical', $('stain_vertical').checked ? '1' : '');
   fd.append('stain_vertical_sqft', $('stain_vertical').checked ? String(num($('stain_vertical_sqft'))) : '0');
+  fd.append('stain_two_color', $('stain_two_color').checked ? '1' : '');
+  fd.append('stain_two_color_mode', $('stain_two_color').checked ? els.stainTwoColorMode.value : '');
   fd.append('stain_process', els.stainProcess.value);
   fd.append('stain_color', els.stainColor.value);
   fd.append('stain_custom_desc', els.stainCustomDesc.value.trim());
