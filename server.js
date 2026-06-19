@@ -148,7 +148,7 @@ app.post("/api/render", requireAuth, renderUpload.single("photo"), async (req, r
 app.get("/api/estimates", requireAuth, (req, res) => {
   const rows = db.prepare(`
     SELECT id, created_at, customer_name, structure_type, wood_type,
-           surface_sqft, pricing_snapshot, status
+           surface_sqft, pricing_snapshot, status, hcp_estimate_id
     FROM estimates ORDER BY datetime(created_at) DESC LIMIT 100
   `).all();
   res.json(rows.map(r => {
@@ -159,6 +159,7 @@ app.get("/api/estimates", requireAuth, (req, res) => {
       id: r.id, created_at: r.created_at, customer_name: r.customer_name,
       structure_type: r.structure_type, wood_type: r.wood_type,
       surface_sqft: r.surface_sqft, status: r.status, total, photo_count: photoCount,
+      hcp_synced: !!r.hcp_estimate_id,
     };
   }));
 });

@@ -18,11 +18,18 @@
   .section-head { margin: 1.5rem 0 0.75rem; }
   .section-head h2 { margin: 0; font-size: 1.05rem; color: var(--brown); }
   .estimate-list { display: flex; flex-direction: column; gap: 0.5rem; }
-  .estimate-row { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; text-decoration: none; color: var(--text); display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; align-items: center; }
+  .estimate-row { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; color: var(--text); display: grid; grid-template-columns: 1fr auto; gap: 0.6rem 1rem; align-items: center; }
+  .estimate-row .er-main { cursor: pointer; min-width: 0; }
   .estimate-row:hover { border-color: var(--amber); }
   .estimate-row .name { font-weight: 700; color: var(--dark); }
   .estimate-row .meta { font-size: 0.83rem; color: var(--gray); }
   .estimate-row .total { font-weight: 700; color: var(--amber); text-align: right; }
+  .er-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.5rem; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+  .er-actions button { flex: 1; min-width: 110px; padding: 0.5rem 0.6rem; border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--line); background: #fff; color: var(--brown); }
+  .er-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .er-actions .b-hcp { border-color: var(--amber); color: var(--amber); }
+  .er-actions .b-del { border-color: #f3c6c2; color: #b3261e; }
+  .er-actions button.busy { opacity: 0.6; pointer-events: none; }
   .placeholder { color: var(--gray); background: #fff; padding: 1.5rem; border-radius: var(--radius); border: 1px dashed var(--line); text-align: center; }
   @media (min-width: 560px) { .home-actions a { padding: 3.5rem 1rem; } }
 </style>
@@ -61,27 +68,66 @@ fetch('/api/config').then(r => r.json()).then(cfg => {
 });
 
 const list = document.getElementById('estimateList');
-fetch('/api/estimates').then(r => r.json()).then(estimates => {
-  if (!estimates || estimates.length === 0) {
-    list.innerHTML = '<div class="placeholder">No estimates yet. Tap “New Estimate” to start one.</div>';
-    return;
-  }
-  list.innerHTML = '';
-  for (const e of estimates) {
-    const a = document.createElement('a');
-    a.href = '/estimate/' + e.id;
-    a.className = 'estimate-row';
-    const dt = new Date(e.created_at + 'Z');
-    const dateStr = dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const svc = [cap(e.structure_type), (e.wood_type || '').replace(/_/g, ' ')].filter(Boolean).join(' · ');
-    a.innerHTML =
-      '<div><div class="name">' + esc(e.customer_name) + '</div>' +
-      '<div class="meta">#' + e.id + ' · ' + dateStr + ' · ' + svc + ' · ' + (e.surface_sqft || 0) + ' sq ft</div></div>' +
-      '<div style="text-align:right"><div class="total">$' + (e.total || 0).toFixed(2) + '</div>' +
-      '<div class="badge ' + e.status + '">' + e.status + '</div></div>';
-    list.appendChild(a);
-  }
-}).catch(err => { list.innerHTML = '<div class="placeholder">Failed to load: ' + esc(err.message) + '</div>'; });
+let HCP_ENABLED = false;
+fetch('/api/config').then(r => r.json()).then(cfg => { HCP_ENABLED = !!cfg.hcp_enabled; }).finally(loadEstimates);
+
+function loadEstimates() {
+  list.innerHTML = '<div class="placeholder">Loading…</div>';
+  fetch('/api/estimates').then(r => r.json()).then(estimates => {
+    if (!estimates || estimates.length === 0) {
+      list.innerHTML = '<div class="placeholder">No estimates yet. Tap “New Estimate” to start one.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    for (const e of estimates) list.appendChild(buildRow(e));
+  }).catch(err => { list.innerHTML = '<div class="placeholder">Failed to load: ' + esc(err.message) + '</div>'; });
+}
+
+function buildRow(e) {
+  const row = document.createElement('div');
+  row.className = 'estimate-row';
+  const dt = new Date(e.created_at + 'Z');
+  const dateStr = dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const svc = [cap(e.structure_type), (e.wood_type || '').replace(/_/g, ' ')].filter(Boolean).join(' · ');
+  const synced = !!e.hcp_synced;
+  row.innerHTML =
+    '<div class="er-main"><div class="name">' + esc(e.customer_name) + '</div>' +
+    '<div class="meta">#' + e.id + ' · ' + dateStr + ' · ' + svc + ' · ' + (e.surface_sqft || 0) + ' sq ft</div></div>' +
+    '<div style="text-align:right"><div class="total">$' + (e.total || 0).toFixed(2) + '</div>' +
+    '<div class="badge ' + e.status + '">' + e.status + '</div></div>' +
+    '<div class="er-actions">' +
+      '<button class="b-hcp" type="button">' + (synced ? '✓ Sent to HCP' : 'Push to HCP') + '</button>' +
+      '<button class="b-del" type="button">Delete</button>' +
+    '</div>';
+
+  row.querySelector('.er-main').addEventListener('click', () => { location.href = '/estimate/' + e.id; });
+
+  const hcpBtn = row.querySelector('.b-hcp');
+  if (synced) { hcpBtn.disabled = true; }
+  else if (!HCP_ENABLED) { hcpBtn.disabled = true; hcpBtn.title = 'Set HCP_API_KEY on the server to enable'; }
+  else hcpBtn.addEventListener('click', () => pushToHcp(e.id, hcpBtn, row));
+
+  row.querySelector('.b-del').addEventListener('click', () => deleteEstimate(e.id, row));
+  return row;
+}
+
+function pushToHcp(id, btn, row) {
+  if (!confirm('Push estimate #' + id + ' to Housecall Pro?')) return;
+  btn.classList.add('busy'); btn.textContent = 'Pushing…';
+  fetch('/api/estimate/' + id + '/send-to-hcp', { method: 'POST' })
+    .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status); return d; })
+    .then(() => { btn.classList.remove('busy'); btn.textContent = '✓ Sent to HCP'; btn.disabled = true;
+      const badge = row.querySelector('.badge'); if (badge) { badge.textContent = 'sent'; badge.className = 'badge sent'; } })
+    .catch(err => { btn.classList.remove('busy'); btn.textContent = 'Push to HCP'; alert('Push failed: ' + err.message); });
+}
+
+function deleteEstimate(id, row) {
+  if (!confirm('Delete estimate #' + id + '? This cannot be undone.')) return;
+  fetch('/api/estimate/' + id, { method: 'DELETE' })
+    .then(async r => { if (!r.ok) throw new Error((await r.json()).error || 'HTTP ' + r.status); })
+    .then(() => { row.remove(); if (!list.querySelector('.estimate-row')) list.innerHTML = '<div class="placeholder">No estimates yet. Tap “New Estimate” to start one.</div>'; })
+    .catch(err => alert('Delete failed: ' + err.message));
+}
 
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
