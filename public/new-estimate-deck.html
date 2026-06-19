@@ -337,6 +337,15 @@ const form = document.getElementById('estimateForm');
 const errorBanner = document.getElementById('errorBanner');
 const saveBtn = document.getElementById('saveBtn');
 const $ = (id) => document.getElementById(id);
+const EDIT_ID = (location.pathname.match(/\/estimate\/(\d+)\/edit/) || [])[1] || null;
+if (EDIT_ID) {
+  const h = document.querySelector('.topbar h1'); if (h) h.textContent = 'Edit Estimate #' + EDIT_ID;
+  saveBtn.textContent = 'Update estimate';
+  const ps = $('photoGrid') ? $('photoGrid').closest('section') : null; if (ps) ps.style.display = 'none';
+  const note = document.createElement('div'); note.className = 'notice'; note.style.marginBottom = '1rem';
+  note.textContent = 'Editing estimate #' + EDIT_ID + ' — photos can’t be changed here.';
+  const main = document.querySelector('main'); if (main) main.insertBefore(note, main.firstChild);
+}
 const els = {
   wood: $('wood_type'), location: $('deck_location'), prior: $('prior_finish'),
   sqft: $('surface_sqft'), railing: $('railing_lf'), stairs: $('stairs_count'),
@@ -410,6 +419,7 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   buildStructures(data.structures);
   updateStainUI();
   updateTotal();
+  if (EDIT_ID) loadForEdit(EDIT_ID);
 });
 const REPAIR_MATERIALS = [
   { id: 'cedar', label: 'Cedar' },
@@ -1088,7 +1098,7 @@ hasRailing.addEventListener('change', () => { if (!hasRailing.checked) metalSpin
 
 // --- Extra line items ---
 const extraItemsDiv = document.getElementById('extraItems');
-document.getElementById('addExtra').addEventListener('click', () => {
+function addExtraRow(desc, price) {
   const row = document.createElement('div');
   row.className = 'extra-item';
   row.innerHTML = '<input type="text" placeholder="Description" class="extra-desc">' +
@@ -1097,9 +1107,12 @@ document.getElementById('addExtra').addEventListener('click', () => {
   row.querySelector('.extra-desc').addEventListener('input', updateTotal);
   row.querySelector('.extra-price').addEventListener('input', updateTotal);
   row.querySelector('button').addEventListener('click', () => { row.remove(); updateTotal(); });
+  if (desc != null) row.querySelector('.extra-desc').value = desc;
+  if (price != null) row.querySelector('.extra-price').value = price;
   extraItemsDiv.appendChild(row);
-  row.querySelector('.extra-desc').focus();
-});
+  return row;
+}
+document.getElementById('addExtra').addEventListener('click', () => { addExtraRow().querySelector('.extra-desc').focus(); });
 function getExtras() {
   const items = [];
   for (const row of extraItemsDiv.querySelectorAll('.extra-item')) {
@@ -1220,6 +1233,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
   for (const p of photos) fd.append('photos', p.file);
   if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }
+  if (EDIT_ID) fd.append('edit_id', EDIT_ID);
   try {
     const res = await fetch('/api/estimate', { method: 'POST', body: fd });
     const data = await res.json();
@@ -1228,14 +1242,117 @@ form.addEventListener('submit', async (e) => {
     form.style.display = 'none';
     document.getElementById('savedId').textContent = data.id;
     document.getElementById('viewLink').href = '/estimate/' + data.id;
+    if (EDIT_ID) {
+      const sc = document.getElementById('successCard');
+      sc.querySelector('h2').textContent = 'Estimate updated';
+      sc.querySelector('p').innerHTML = 'Updated estimate #' + data.id + '.';
+    }
     document.getElementById('successCard').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (err) {
     errorBanner.textContent = err.message; errorBanner.style.display = 'block';
-    saveBtn.disabled = false; saveBtn.textContent = 'Save estimate';
+    saveBtn.disabled = false; saveBtn.textContent = EDIT_ID ? 'Update estimate' : 'Save estimate';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
+
+// ---------- Edit mode: prefill the form from a saved estimate ----------
+function fireChange(el) { if (el) el.dispatchEvent(new Event('change')); }
+function setChk(el, v) { if (!el) return; el.checked = !!v; fireChange(el); }
+function setVal(el, v) { if (el && v != null) el.value = v; }
+async function loadForEdit(id) {
+  let e;
+  try { const r = await fetch('/api/estimate/' + id); if (!r.ok) throw new Error((await r.json()).error || 'HTTP ' + r.status); e = await r.json(); }
+  catch (err) { errorBanner.textContent = 'Failed to load estimate: ' + err.message; errorBanner.style.display = 'block'; return; }
+  const p = e.project || {}, x = e.edit || {}, c = e.customer || {};
+  setVal($('customer_name'), c.name); setVal($('customer_phone'), c.phone); setVal($('customer_email'), c.email); setVal($('customer_address'), c.address);
+  setVal(els.wood, p.wood_type); fireChange(els.wood);
+  setVal(els.location, p.deck_location); fireChange(els.location);
+  setVal(els.prior, p.prior_finish);
+  setVal(els.sqft, p.surface_sqft);
+  if (p.multilevel_levels > 0) { setChk(hasMultilevel, true); setVal(els.levels, p.multilevel_levels); }
+  if (p.has_railing) { setChk(hasRailing, true); setVal(els.railing, p.railing_lf); if (p.has_metal_spindles) setChk(metalSpindles, true); }
+  if (p.stairs_count > 0) { setChk(hasStairs, true); setVal(els.stairs, p.stairs_count); }
+  setChk(stepsIncluded, p.steps_included);
+  (p.structures || []).forEach(sid => { const cb = document.querySelector('#structuresGrid input[value="' + sid + '"]'); if (cb) { cb.checked = true; fireChange(cb); } });
+  setVal($('structures_other'), p.structures_other);
+  setVal(els.pergola, p.pergola_gazebo_size); fireChange(els.pergola);
+  setChk(cleaningEnabled, p.cleaning_enabled);
+  setChk(lightClean, p.light_clean);
+  setChk(chicago, p.chicago_surcharge);
+  setVal(els.sandingCond, p.sanding_condition); fireChange(els.sandingCond);
+  if (p.vertical_sanding) { setChk(verticalSanding, true); setVal(els.vlen, p.vertical_length); setVal(els.vhgt, p.vertical_height); }
+  if (p.staining_enabled) {
+    setChk(stainingEnabled, true);
+    setVal(els.stainProcess, p.stain_process); fireChange(els.stainProcess);
+    setVal(els.stainColor, p.stain_color);
+    setVal(els.stainCustomDesc, p.stain_custom_desc);
+    setChk(stainCustomerSupplied, p.stain_customer_supplied);
+    if (x.stain_vertical) { setChk($('stain_vertical'), true); setVal($('stain_vertical_sqft'), x.stain_vertical_sqft); }
+    if (x.stain_two_color) { setChk($('stain_two_color'), true); setVal(els.stainTwoColorMode, x.stain_two_color_mode); }
+  }
+  const pct = m => (Number.isFinite(m) && m > 0) ? Math.round((m - 1) * 1000) / 10 : 0;
+  if (pct(x.cleaning_multiplier)) setVal(els.cleanMult, pct(x.cleaning_multiplier));
+  if (pct(x.sanding_multiplier)) setVal(els.sandMult, pct(x.sanding_multiplier));
+  if (pct(x.staining_multiplier)) setVal(els.stainMult, pct(x.staining_multiplier));
+  if ((x.discount || 0) > 0 || x.discount_desc) { $('discountField').style.display = 'block'; setVal(els.discount, x.discount); setVal($('discount_desc'), x.discount_desc); }
+  setVal($('debris_removal'), x.debris_removal);
+  setVal($('repairs_notes'), p.repairs_notes);
+  (x.extra_items || []).forEach(it => addExtraRow(it.description, it.price));
+  applyRepairsEdit(x.repairs || []);
+  updateStainUI();
+  updateRepairsSummary();
+  updateTotal();
+}
+function applyRepairsEdit(repairs) {
+  const others = [];
+  for (const r of repairs) {
+    const def = REPAIRS[r.item_id];
+    if (!def) continue;
+    const mode = def.mode || 'material';
+    if (mode === 'other') { others.push(r); continue; }
+    const row = document.querySelector('#repairsList .repair-row[data-item="' + r.item_id + '"]');
+    if (!row) continue;
+    if (mode === 'flag') { const cb = row.querySelector('.rflag'); if (cb && r.flagged) cb.checked = true; continue; }
+    if (mode === 'qty') { const q = row.querySelector('.bl-qty'); if (q && r.lines && r.lines[0]) q.value = r.lines[0].qty; continue; }
+    if (r.toggled) { const t = row.querySelector('.rtoggle'); if (t) t.checked = true; }
+    const addmore = row.querySelector('.addmore');
+    for (const ln of (r.lines || [])) {
+      if (addmore) addmore.click();
+      const bl = row.querySelectorAll('.board-line'); const div = bl[bl.length - 1]; if (!div) continue;
+      const mSel = div.querySelector('.bl-material'); if (mSel) { mSel.value = ln.material; mSel.dispatchEvent(new Event('change')); }
+      const bSel = div.querySelector('.bl-board'); if (bSel && ln.board) bSel.value = ln.board;
+      const q = div.querySelector('.bl-qty'); if (q) q.value = ln.qty;
+      const pr = div.querySelector('.bl-price'); if (pr && ln.unit_labor != null) pr.value = ln.unit_labor;
+    }
+  }
+  if (others.length) {
+    const addBlockBtn = document.querySelector('#repairsList .addblock');
+    others.forEach((r, i) => {
+      if (i > 0 && addBlockBtn) addBlockBtn.click();
+      const bl = document.querySelectorAll('#repairsList .repair-row[data-mode="other"]');
+      applyOtherBlockEdit(bl[bl.length - 1], r);
+    });
+  }
+}
+function applyOtherBlockEdit(block, r) {
+  if (!block) return;
+  const desc = block.querySelector('.other-desc'); if (desc) desc.value = r.description || '';
+  const addmore = block.querySelector('.addmore');
+  for (const ln of (r.lines || [])) {
+    if (addmore) addmore.click();
+    const bl = block.querySelectorAll('.board-line'); const div = bl[bl.length - 1]; if (!div) continue;
+    const mSel = div.querySelector('.bl-material'); if (mSel) { mSel.value = ln.material; mSel.dispatchEvent(new Event('change')); }
+    if (ln.material === 'other') {
+      const nm = div.querySelector('.bl-custom-name'); if (nm) nm.value = ln.custom_name || '';
+      const mp = div.querySelector('.bl-matprice'); if (mp && ln.unit_material != null) mp.value = ln.unit_material;
+    } else {
+      const bSel = div.querySelector('.bl-board'); if (bSel && ln.board) bSel.value = ln.board;
+    }
+    const q = div.querySelector('.bl-qty'); if (q) q.value = ln.qty;
+    const pr = div.querySelector('.bl-price'); if (pr && ln.unit_labor != null) pr.value = ln.unit_labor;
+  }
+}
 </script>
 </body>
 </html>

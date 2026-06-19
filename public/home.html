@@ -97,10 +97,12 @@ function buildRow(e) {
     '<div class="badge ' + e.status + '">' + e.status + '</div></div>' +
     '<div class="er-actions">' +
       '<button class="b-hcp" type="button">' + (synced ? '✓ Sent to HCP' : 'Push to HCP') + '</button>' +
+      '<button class="b-edit" type="button">Edit</button>' +
       '<button class="b-del" type="button">Delete</button>' +
     '</div>';
 
   row.querySelector('.er-main').addEventListener('click', () => { location.href = '/estimate/' + e.id; });
+  row.querySelector('.b-edit').addEventListener('click', () => { location.href = '/estimate/' + e.id + '/edit'; });
 
   const hcpBtn = row.querySelector('.b-hcp');
   if (synced) { hcpBtn.disabled = true; }

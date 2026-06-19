@@ -72,6 +72,7 @@ app.get("/visualizer", requireAuth, (req, res) => res.sendFile(path.join(PUBLIC_
 app.get("/estimate/new", requireAuth, (req, res) => res.sendFile(path.join(PUBLIC_DIR, "estimate-structure.html")));
 app.get("/estimate/new/deck", requireAuth, (req, res) => res.sendFile(path.join(PUBLIC_DIR, "new-estimate-deck.html")));
 app.get("/estimate/new/:structure", requireAuth, (req, res) => res.sendFile(path.join(PUBLIC_DIR, "coming-soon.html")));
+app.get("/estimate/:id/edit", requireAuth, (req, res) => res.sendFile(path.join(PUBLIC_DIR, "new-estimate-deck.html")));
 app.get("/estimate/:id", requireAuth, (req, res) => res.sendFile(path.join(PUBLIC_DIR, "estimate-view.html")));
 
 // ---- Config / options for the UI ----
@@ -224,6 +225,19 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
       })(),
     },
     breakdown,
+    edit: (() => {
+      let repairs = [], extra_items = [];
+      try { repairs = JSON.parse(row.repairs || "[]"); } catch (_) {}
+      try { extra_items = JSON.parse(row.extra_items || "[]"); } catch (_) {}
+      return {
+        repairs, extra_items,
+        debris_removal: row.debris_removal || 0,
+        cleaning_multiplier: row.cleaning_multiplier, sanding_multiplier: row.sanding_multiplier, staining_multiplier: row.staining_multiplier,
+        discount: (row.discount_cents || 0) / 100, discount_desc: row.discount_desc,
+        stain_vertical: !!row.stain_vertical, stain_vertical_sqft: row.stain_vertical_sqft || 0,
+        stain_two_color: !!row.stain_two_color, stain_two_color_mode: row.stain_two_color_mode,
+      };
+    })(),
     hcp: { customer_id: row.hcp_customer_id, estimate_id: row.hcp_estimate_id, synced_at: row.hcp_synced_at, enabled: hcpEnabled() },
     photos: photos.map(p => ({
       id: p.id, filename: p.filename, kind: p.kind, swatch_id: p.swatch_id,
@@ -277,6 +291,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const discount = b.discount ? parseFloat(b.discount) : 0;
     const discount_desc = (b.discount_desc || "").toString().slice(0, 120).trim() || null;
     const source_hcp_estimate_id = (b.source_hcp_estimate_id || "").trim() || null;
+    const editId = b.edit_id ? parseInt(b.edit_id, 10) : null;
     const structures_other = (b.structures_other || "").trim() || null;
     // Cleaning inputs
     const cleaning_enabled = b.cleaning_enabled ? 1 : 0;
@@ -406,6 +421,40 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       repairs, debris_removal,
       discount, discount_desc, extra_items: cleanExtras,
     });
+
+    // Edit mode: update the existing estimate in place (photos untouched).
+    if (editId) {
+      const existing = db.prepare("SELECT id FROM estimates WHERE id = ?").get(editId);
+      if (!existing) return res.status(404).json({ error: "Estimate not found" });
+      db.prepare(`
+        UPDATE estimates SET
+          customer_name=?, customer_phone=?, customer_email=?, customer_address=?,
+          structure_type=?, wood_type=?, deck_location=?, multilevel_levels=?,
+          surface_sqft=?, steps_included=?, has_railing=?, has_metal_spindles=?, railing_lf=?, stairs_count=?,
+          structures=?, structures_other=?, prior_finish=?,
+          cleaning_enabled=?, chicago_surcharge=?, light_clean=?, pergola_gazebo_size=?, cleaning_multiplier=?,
+          sanding_condition=?, vertical_sanding=?, vertical_length=?, vertical_height=?, sanding_multiplier=?,
+          staining_enabled=?, stain_process=?, stain_color=?, stain_custom_desc=?, stain_customer_supplied=?, stain_vertical=?, stain_vertical_sqft=?, staining_multiplier=?,
+          stain_two_color=?, stain_two_color_mode=?,
+          repairs=?, repairs_notes=?, debris_removal=?,
+          extra_items=?, discount_cents=?, discount_desc=?, pricing_snapshot=?,
+          updated_at=datetime('now')
+        WHERE id=?
+      `).run(
+        customer_name, customer_phone, customer_email, customer_address,
+        structure_type, wood_type, deck_location, multilevel_levels,
+        surface_sqft, steps_included, has_railing, has_metal_spindles, railing_lf, stairs_count,
+        JSON.stringify(structures), structures_other, prior_finish,
+        cleaning_enabled, chicago_surcharge, light_clean, pergola_gazebo_size, cleaning_multiplier,
+        sanding_condition, vertical_sanding, vertical_length, vertical_height, sanding_multiplier,
+        staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical, stain_vertical_sqft, staining_multiplier,
+        stain_two_color, stain_two_color_mode,
+        JSON.stringify(repairs), repairs_notes, debris_removal,
+        JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown),
+        editId
+      );
+      return res.json({ ok: true, id: editId });
+    }
 
     const result = db.prepare(`
       INSERT INTO estimates (
