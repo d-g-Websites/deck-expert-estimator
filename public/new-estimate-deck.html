@@ -1057,7 +1057,7 @@ function updateTotal() {
   document.getElementById('discountAmount').textContent = '-' + fmt(discount);
   document.getElementById('grandTotal').textContent = fmt(grand);
 }
-[els.sqft, els.discount, $('discount_desc'), els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
+[els.sqft, els.railing, els.discount, $('discount_desc'), els.levels, els.vlen, els.vhgt, els.cleanMult, els.sandMult, els.stainMult].forEach(el => el.addEventListener('input', updateTotal));
 els.location.addEventListener('change', updateTotal);
 $('other_fields').addEventListener('change', (e) => {
   if (e.target.value === 'discount') $('discountField').style.display = 'block';
