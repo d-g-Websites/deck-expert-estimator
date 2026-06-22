@@ -173,7 +173,9 @@ function proratedSupply(item, area) {
 export function computeMaterials(input) {
   const items = [];
   const horizontal = Number(input.surface_sqft) || 0;
-  const vertical = Number(input.vertical_sqft) || 0;   // captured later (staining section)
+  // Vertical staining footage (privacy wall, skirting, lattice) counts toward the
+  // stain product gallons just like deck footage.
+  const vertical = input.stain_vertical ? (Number(input.stain_vertical_sqft) || 0) : 0;
   const combined = horizontal + vertical;
 
   // Cleaner & Brightener + gas — included whenever we power wash / clean.

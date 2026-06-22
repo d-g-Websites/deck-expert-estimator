@@ -213,11 +213,11 @@
         </div>
         <div id="stainLaborNote" class="notice" style="display:none;margin-top:0.5rem"></div>
         <div class="hint">Stain material &amp; supplies are added at cost, based on the deck square footage. Railing/verticals are priced via the “Railing” option in Project.</div>
-        <div class="toggle" style="margin-top:0.5rem"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_vertical"> Vertical staining/sealing (railing, skirting, lattice, etc.)</label>
+        <div class="toggle" style="margin-top:0.5rem"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_vertical"> Vertical staining/sealing (privacy wall, skirting, lattice, etc.)</label>
           <div class="conditional" id="stainVerticalWrap" style="display:none">
             <label class="sub-label" for="stain_vertical_sqft">Vertical square footage</label>
             <input type="number" id="stain_vertical_sqft" inputmode="decimal" step="1" min="0" placeholder="0" style="max-width:160px">
-            <div class="hint">Labor only — priced at the deck's effective $/sq ft.</div>
+            <div class="hint">Priced at the deck's effective $/sq ft; this footage is added to the deck total and to the stain gallons.</div>
           </div>
         </div>
         <div class="toggle"><label class="check-line" style="font-weight:500"><input type="checkbox" id="stain_two_color"> 2-color staining</label>
@@ -965,7 +965,8 @@ function computeMaterials() {
     if (s) total += s.price * Math.max(1, Math.ceil(horizontal / s.per_sqft));
   }
   if (stainingEnabled.checked) {
-    const combined = horizontal;
+    const vertical = $('stain_vertical').checked ? num($('stain_vertical_sqft')) : 0;
+    const combined = horizontal + vertical;
     if (combined > 0) {
       const proc = PROCESSES && PROCESSES[els.stainProcess.value];
       const matKey = proc && proc.material;
