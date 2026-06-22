@@ -102,6 +102,14 @@ function render(e) {
   }
 
   const cl = b.cleaning || {}, sd = b.sanding || {}, stn = b.staining || {}, rep = b.repairs || {}, mat = b.materials || {};
+  let discountNote = '';
+  if (b.discount > 0) {
+    const base = new Date((e.created_at || '').replace(' ', 'T'));
+    const start = isNaN(base) ? new Date() : base;
+    const exp = new Date(start.getTime()); exp.setDate(exp.getDate() + 30);
+    const expStr = exp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    discountNote = '<div class="row" style="border:none"><span class="label" style="font-size:0.85rem;opacity:0.85">This discount is valid only if the work is approved by <strong>' + expStr + '</strong> (30 days from the estimate date).</span></div>';
+  }
   const totals = '<section class="card total-card"><h2 style="color:var(--cream)">Total</h2>' +
     ((cl.total || 0) > 0 ? row('Cleaning', fmt(cl.total)) : '') +
     ((sd.total || 0) > 0 ? row('Sanding' + (e.labels.sanding ? ' (' + e.labels.sanding + ')' : ''), fmt(sd.total)) : '') +
@@ -111,7 +119,8 @@ function render(e) {
     (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +
     '<div class="row subtotal"><span class="label">Subtotal</span><span class="value">' + fmt(b.subtotal || 0) + '</span></div>' +
     (b.discount > 0 ? row('Discount' + (b.discount_label ? ' (' + b.discount_label + ')' : ''), '-' + fmt(b.discount)) : '') +
-    '<div class="row total"><span class="label">Total</span><span class="value">' + fmt(b.total || 0) + '</span></div></section>';
+    '<div class="row total"><span class="label">Total</span><span class="value">' + fmt(b.total || 0) + '</span></div>' +
+    discountNote + '</section>';
 
   let renderHtml = '';
   if (renderPhoto) {
