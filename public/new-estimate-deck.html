@@ -970,7 +970,12 @@ function computeMaterials() {
       const proc = PROCESSES && PROCESSES[els.stainProcess.value];
       const matKey = proc && proc.material;
       const mb = (matKey && !stainCustomerSupplied.checked) ? MATERIALS.stain_brands[matKey] : null;
-      if (mb) total += Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
+      if (mb) {
+        total += Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
+        // Extra paint for the railing: 1 gallon per 80 linear feet.
+        const railingLf = hasRailing.checked ? num(els.railing) : 0;
+        if (railingLf > 0) total += Math.ceil(railingLf / 80) * mb.price_per_gallon;
+      }
       const ss = MATERIALS.supplies.stain_supplies;
       total += ss.price * Math.max(1, Math.ceil(combined / ss.per_sqft));
     }

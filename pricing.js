@@ -192,6 +192,12 @@ export function computeMaterials(input) {
     if (brand) {
       const gallons = Math.ceil(combined / brand.coverage_sqft);
       items.push({ id: "stain_material", label: `${brand.label} stain (${gallons} gal)`, cost: round2(gallons * brand.price_per_gallon) });
+      // Extra paint for the railing: 1 gallon of the chosen stain per 80 linear feet.
+      const railingLf = input.has_railing ? (Number(input.railing_lf) || 0) : 0;
+      if (railingLf > 0) {
+        const railGallons = Math.ceil(railingLf / 80);
+        items.push({ id: "railing_stain_material", label: `${brand.label} railing paint (${railGallons} gal)`, cost: round2(railGallons * brand.price_per_gallon) });
+      }
     }
     const ss = MATERIALS_PRICING.supplies.stain_supplies;
     items.push({ id: "stain_supplies", label: ss.label, cost: proratedSupply(ss, combined) });
