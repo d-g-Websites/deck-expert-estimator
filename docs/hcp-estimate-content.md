@@ -91,6 +91,28 @@ per job. Consistency without forcing every nuance into rigid fields.
 
 ---
 
+## Section 2 — Power Washing / Wood Cleaning  *(line item)*
+
+- **Name:** `Power Washing / Wood Cleaning` (always exactly this).
+- **Shown only when cleaning is enabled** — skip the line entirely if no
+  cleaning is needed.
+- **Price:** cleaning **labor** = `breakdown.cleaning.total` (materials are
+  carried separately in the Materials section). *(See open question Q2.)*
+
+### Description (reworded — pending final approval)
+> Our wood restoration process begins by applying a dedicated wood cleaner and
+> power washing the surface to effectively remove dirt, grime, and built-up
+> residue. When needed, we follow with a wood brightener to revive the wood's
+> natural color and vibrancy. The cost of these cleaning materials is included
+> in the Materials section.
+
+### Default disclaimer (always appended, verbatim)
+> *Power washing may uncover additional rot not detected during the initial
+> estimate. Any additional replacement required is not included in this quote,
+> as it will be assessed separately upon discovery.
+
+---
+
 ## Data model implications (running list)
 
 Scope of Work needs:
@@ -114,8 +136,14 @@ Scope of Work needs:
   (C) two separate estimates.
   *Lean: (A); (B) reserved for true either/or options.* — **pending**
 
+- **Q2 — Power Washing line price:** confirm the line carries the cleaning
+  **labor** total (`breakdown.cleaning.total`), with materials shown only in the
+  Materials section. — **pending**
+
 ---
 
 ## Changelog
 - Section 1 (Scope of Work) captured; generation approach + responsibilities
-  pattern decided. Sections 2+ (priced) pending examples.
+  pattern decided.
+- Section 2 (Power Washing / Wood Cleaning) captured; description reworded
+  (pending approval), default rot disclaimer recorded. Sections 3+ pending.
