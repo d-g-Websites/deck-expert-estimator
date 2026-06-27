@@ -247,12 +247,9 @@
       <h2>Scope of Work</h2>
       <label class="sub-label" for="scope_title">Title</label>
       <input type="text" id="scope_title" placeholder="Deck Refinishing" style="width:100%">
-      <div class="of-head" style="margin-top:0.75rem;display:flex;align-items:center;justify-content:space-between">
-        <label style="margin:0">Description <span style="font-weight:400;color:var(--gray)">(first line on the HCP estimate, no price)</span></label>
-        <button type="button" class="btn secondary" id="regenScope" style="width:auto;padding:0.3rem 0.75rem">Regenerate draft</button>
-      </div>
-      <textarea id="scope_description" rows="14" style="width:100%;font:inherit" placeholder="Auto-drafted from the project details — tap “Regenerate draft”, then edit."></textarea>
-      <div class="hint">Auto-drafted from the project details. Edit freely — add special notes, extra responsibilities/exclusions, or additional deck areas. Shown as the first ($0) line on the Housecall Pro estimate.</div>
+      <button type="button" class="btn secondary" id="openScope" style="width:100%;margin-top:0.75rem">→ See / Edit Scope Draft</button>
+      <div id="scopePreview" class="hint" style="margin-top:0.6rem;white-space:pre-wrap;max-height:5.5em;overflow:hidden;position:relative"></div>
+      <div class="hint" style="margin-top:0.4rem">First ($0) line on the Housecall Pro estimate. Auto-drafted from the project details — open to review/edit.</div>
     </section>
 
     <section class="card">
@@ -324,6 +321,24 @@
       <div id="repairsBreakdownBody"></div>
     </div>
     <button type="button" class="btn primary" id="repairsDone">Done — back to estimate</button>
+  </main>
+</div>
+
+<div id="scopeScreen" class="repairs-screen" style="display:none">
+  <div class="topbar">
+    <a href="#" class="back" id="scopeBack">← Back to estimate</a>
+    <h1>Scope of Work</h1>
+  </div>
+  <main>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
+        <h2 style="margin:0">Description</h2>
+        <button type="button" class="btn secondary" id="regenScope" style="width:auto;padding:0.35rem 0.8rem">Regenerate draft</button>
+      </div>
+      <div class="hint" style="margin:0.5rem 0 0.75rem">This is the first ($0) line on the estimate. Edit freely — add special notes, extra responsibilities/exclusions, or additional deck areas.</div>
+      <textarea id="scope_description" rows="22" style="width:100%;font:inherit;line-height:1.5" placeholder="Auto-drafted from the project details — tap “Regenerate draft”, then edit."></textarea>
+    </div>
+    <button type="button" class="btn primary" id="scopeDone">Done — back to estimate</button>
   </main>
 </div>
 
@@ -1163,12 +1178,28 @@ function buildScopeDraft() {
   const addl = 'Additional Services:\n-Upon-request inspection / maintenance wash within 18 months of project completion.';
   return [area, resp, excl, addl].join('\n\n');
 }
+function updateScopePreview() {
+  const t = (scopeDescEl.value || '').trim();
+  const prev = $('scopePreview');
+  prev.textContent = t || 'No draft yet — tap “See / Edit Scope Draft” to generate one.';
+  prev.style.opacity = t ? '0.85' : '0.6';
+}
 $('regenScope').addEventListener('click', () => {
   if (scopeDescEl.value.trim() && !confirm('Replace the description with a fresh draft? Your edits will be lost.')) return;
   scopeDescEl.value = buildScopeDraft();
   if (!scopeTitleEl.value.trim()) scopeTitleEl.value = 'Deck Refinishing';
+  updateScopePreview();
 });
-scopeDescEl.addEventListener('focus', () => { if (!scopeDescEl.value.trim()) scopeDescEl.value = buildScopeDraft(); });
+scopeDescEl.addEventListener('input', updateScopePreview);
+function openScopeScreen() {
+  if (!scopeDescEl.value.trim()) scopeDescEl.value = buildScopeDraft();
+  $('scopeScreen').style.display = 'block'; window.scrollTo(0, 0);
+}
+function closeScopeScreen() { $('scopeScreen').style.display = 'none'; updateScopePreview(); window.scrollTo(0, 0); }
+$('openScope').addEventListener('click', openScopeScreen);
+$('scopeDone').addEventListener('click', closeScopeScreen);
+$('scopeBack').addEventListener('click', (e) => { e.preventDefault(); closeScopeScreen(); });
+updateScopePreview();
 
 // --- Photos + render ---
 function compressImage(file, maxDim, quality) {
@@ -1349,6 +1380,7 @@ async function loadForEdit(id) {
   setVal($('repairs_notes'), p.repairs_notes);
   setVal(scopeTitleEl, p.scope_title);
   setVal(scopeDescEl, p.scope_description);
+  updateScopePreview();
   (x.extra_items || []).forEach(it => addExtraRow(it.description, it.price));
   applyRepairsEdit(x.repairs || []);
   updateStainUI();
