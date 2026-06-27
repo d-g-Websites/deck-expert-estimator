@@ -245,8 +245,22 @@ export function buildLineItems(record, breakdown) {
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 function label(s) { return (s || "").replace(/_/g, " "); }
 
-// Create an estimate in HCP for a customer. Returns the estimate id.
-export async function createEstimate(customerId, record, breakdown) {
+// Resolve the customer's first address id (HCP ties an estimate to an address).
+async function firstAddressId(customerId) {
+  try {
+    const cust = await hcpRequest(`/customers/${customerId}`);
+    const addrs = (cust && Array.isArray(cust.addresses)) ? cust.addresses
+      : (cust && cust.customer && Array.isArray(cust.customer.addresses)) ? cust.customer.addresses : [];
+    return addrs.length ? pickId(addrs[0], "id", "uuid") : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Create an estimate in HCP for a customer. HCP estimates are multi-option, so
+// line items live under an option (options[].line_items), not at the top level.
+// Returns the estimate id.
+export async function createEstimate(customerId, addressId, record, breakdown) {
   const structLbl = (STRUCTURE_TYPES[record.structure_type] || {}).label || cap(record.structure_type);
   const woodLbl = (WOOD_TYPES[record.wood_type] || {}).label || label(record.wood_type);
   const noteParts = [
@@ -254,18 +268,26 @@ export async function createEstimate(customerId, record, breakdown) {
     record.repairs_notes ? `Repair notes: ${record.repairs_notes}` : null,
     breakdown && breakdown.total != null ? `App total: $${Number(breakdown.total).toFixed(2)}.` : null,
   ].filter(Boolean);
+  const note = noteParts.join(" ");
+
   const payload = {
     customer_id: customerId,
-    line_items: buildLineItems(record, breakdown),
-    note: noteParts.join(" "),
+    options: [{
+      name: "Option #1",
+      message_from_pro: note,
+      line_items: buildLineItems(record, breakdown),
+    }],
+    note,
   };
+  if (addressId) payload.address_id = addressId;
+
   const created = await hcpRequest("/estimates", { method: "POST", body: payload });
   const id = pickId(created, "id", "uuid") || pickId(created?.estimate || {}, "id", "uuid");
   if (!id) throw new Error("HCP estimate created but no id was returned");
   return id;
 }
 
-// Orchestrates the full push: customer then estimate.
+// Orchestrates the full push: customer, address, then estimate.
 export async function sendEstimateToHcp(record, breakdown) {
   const customerId = await upsertCustomer({
     name: record.customer_name,
@@ -273,6 +295,7 @@ export async function sendEstimateToHcp(record, breakdown) {
     phone: record.customer_phone,
     address: record.customer_address,
   });
-  const estimateId = await createEstimate(customerId, record, breakdown);
+  const addressId = await firstAddressId(customerId);
+  const estimateId = await createEstimate(customerId, addressId, record, breakdown);
   return { customerId, estimateId };
 }
