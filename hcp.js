@@ -228,6 +228,16 @@ export function buildLineItems(record, breakdown) {
     items.push({ name, description: description || undefined, unit_price: cents(dollars), quantity: 1, kind, taxable });
   };
 
+  // §1 Scope of Work — descriptive, no price (always first when present).
+  if (record.scope_description && record.scope_description.trim()) {
+    const title = (record.scope_title || "").trim();
+    items.push({
+      name: title ? `Scope of Work: ${title}` : "Scope of Work",
+      description: record.scope_description.trim(),
+      unit_price: 0, quantity: 1, kind: "labor", taxable: false,
+    });
+  }
+
   // §2 Power Washing / Wood Cleaning (cleaning labor; materials shown separately)
   if (b.cleaning && b.cleaning.total > 0) {
     push("Power Washing / Wood Cleaning", b.cleaning.total, {

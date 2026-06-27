@@ -244,6 +244,18 @@
     </section>
 
     <section class="card">
+      <h2>Scope of Work</h2>
+      <label class="sub-label" for="scope_title">Title</label>
+      <input type="text" id="scope_title" placeholder="Deck Refinishing" style="width:100%">
+      <div class="of-head" style="margin-top:0.75rem;display:flex;align-items:center;justify-content:space-between">
+        <label style="margin:0">Description <span style="font-weight:400;color:var(--gray)">(first line on the HCP estimate, no price)</span></label>
+        <button type="button" class="btn secondary" id="regenScope" style="width:auto;padding:0.3rem 0.75rem">Regenerate draft</button>
+      </div>
+      <textarea id="scope_description" rows="14" style="width:100%;font:inherit" placeholder="Auto-drafted from the project details — tap “Regenerate draft”, then edit."></textarea>
+      <div class="hint">Auto-drafted from the project details. Edit freely — add special notes, extra responsibilities/exclusions, or additional deck areas. Shown as the first ($0) line on the Housecall Pro estimate.</div>
+    </section>
+
+    <section class="card">
       <h2>Other Fields</h2>
       <div class="field"><label for="other_fields">Add a field</label>
         <select id="other_fields">
@@ -422,6 +434,7 @@ fetch('/api/pricing/deck').then(r => r.json()).then(data => {
   updateStainUI();
   updateTotal();
   if (EDIT_ID) loadForEdit(EDIT_ID);
+  else if (!scopeTitleEl.value) scopeTitleEl.value = 'Deck Refinishing';
 });
 const REPAIR_MATERIALS = [
   { id: 'cedar', label: 'Cedar' },
@@ -1131,6 +1144,32 @@ function getExtras() {
   return items;
 }
 
+// --- Scope of Work draft (HCP estimate §1) ---
+const scopeTitleEl = $('scope_title'), scopeDescEl = $('scope_description');
+function buildScopeDraft() {
+  const sqft = num(els.sqft) || 0;
+  const surfaces = ['deck floor'];
+  if (hasRailing.checked) surfaces.push('railing assemblies');
+  if (hasStairs.checked) surfaces.push('stair treads');
+  surfaces.push('risers/skirting');
+  let area = 'Deck Area: ' + (sqft || '___') + ' sq ft. - This includes refinishing of all accessible surfaces including ' + surfaces.join(', ') + '.';
+  if (structuresHas('gazebo')) area += '\n*Project includes accessible exterior surfaces of gazebo.';
+  if (structuresHas('pergola')) area += '\n*Project includes accessible exterior surfaces of pergola.';
+  const resp = 'Client Responsibilities:\n' +
+    '-Clearing the deck surface and removing all hanging items before work begins.\n' +
+    '-Notifying adjacent neighbors of the scheduled project dates to help ensure the crew can remain focused and minimize interruptions during work hours.\n' +
+    '-Ensuring accessibility and proper functioning of a water source and power outlet throughout the project duration.';
+  const excl = 'Exclusions:\n-The underside of the deck is not included in this refinishing proposal.';
+  const addl = 'Additional Services:\n-Upon-request inspection / maintenance wash within 18 months of project completion.';
+  return [area, resp, excl, addl].join('\n\n');
+}
+$('regenScope').addEventListener('click', () => {
+  if (scopeDescEl.value.trim() && !confirm('Replace the description with a fresh draft? Your edits will be lost.')) return;
+  scopeDescEl.value = buildScopeDraft();
+  if (!scopeTitleEl.value.trim()) scopeTitleEl.value = 'Deck Refinishing';
+});
+scopeDescEl.addEventListener('focus', () => { if (!scopeDescEl.value.trim()) scopeDescEl.value = buildScopeDraft(); });
+
 // --- Photos + render ---
 function compressImage(file, maxDim, quality) {
   return new Promise((resolve) => {
@@ -1238,6 +1277,8 @@ form.addEventListener('submit', async (e) => {
   fd.append('extra_items', JSON.stringify(getExtras()));
   fd.append('discount', String(num(els.discount)));
   fd.append('discount_desc', $('discount_desc').value.trim());
+  fd.append('scope_title', scopeTitleEl.value.trim());
+  fd.append('scope_description', (scopeDescEl.value.trim() || buildScopeDraft()));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
   for (const p of photos) fd.append('photos', p.file);
   if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }
@@ -1306,6 +1347,8 @@ async function loadForEdit(id) {
   if ((x.discount || 0) > 0 || x.discount_desc) { $('discountField').style.display = 'block'; setVal(els.discount, x.discount); setVal($('discount_desc'), x.discount_desc); }
   setVal($('debris_removal'), x.debris_removal);
   setVal($('repairs_notes'), p.repairs_notes);
+  setVal(scopeTitleEl, p.scope_title);
+  setVal(scopeDescEl, p.scope_description);
   (x.extra_items || []).forEach(it => addExtraRow(it.description, it.price));
   applyRepairsEdit(x.repairs || []);
   updateStainUI();

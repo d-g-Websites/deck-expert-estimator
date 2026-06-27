@@ -65,6 +65,10 @@ function render(e) {
     f('Email', e.customer.email || '—') + f('Address', e.customer.address || '—') + '</div>');
 
   const pr = e.project;
+  const scopeCard = (pr.scope_description && pr.scope_description.trim())
+    ? card('Scope of Work' + (pr.scope_title ? ': ' + pr.scope_title : ''),
+        '<div style="white-space:pre-wrap;line-height:1.5">' + esc(pr.scope_description) + '</div>')
+    : '';
   const structuresStr = (e.labels.structures && e.labels.structures.length)
     ? e.labels.structures.join(', ') + (pr.structures_other ? ' (' + pr.structures_other + ')' : '')
     : '—';
@@ -149,7 +153,7 @@ function render(e) {
   }
   const actions = '<div class="actions">' + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
 
-  content.innerHTML = customer + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
+  content.innerHTML = customer + scopeCard + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
 
   content.querySelectorAll('.photo-tile').forEach(t => t.addEventListener('click', () => openLightbox(t.dataset.url)));
   content.querySelectorAll('img[data-zoom]').forEach(img => img.addEventListener('click', () => openLightbox(img.src)));

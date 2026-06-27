@@ -78,16 +78,25 @@ Built from a fixed skeleton = **constant boilerplate** + **job-specific inserts*
 5. **Special notes:** optional free-text block(s) — e.g. the Privacy Fence
    appearance disclaimer. Verbatim, tech-entered.
 
-### Generation approach (decided)
-App **auto-drafts** this section (boilerplate always included; areas / sq ft /
-surfaces pulled from the form) into an **editable text area** the tech can refine
-per job. Consistency without forcing every nuance into rigid fields.
+### Generation approach (decided + BUILT)
+App **auto-drafts** this section (standard boilerplate + an area line built from
+sq ft / railing / stairs / gazebo-pergola) into an **editable text area** the
+tech refines per job. Stored as `scope_title` + `scope_description`; pushed as a
+$0 `Scope of Work: <title>` line (first item). ✅ **BUILT** (form card with
+"Regenerate draft", save, edit-prefill, estimate-view card, HCP line).
 
-### Multiple areas (edge case)
+Because the description is free text, **multiple areas are handled descriptively
+today** — the tech writes additional area blocks in the box. The only deferred
+piece is *structured per-area pricing* (see Multiple areas + Q1).
+
+### Multiple areas (edge case) — pricing piece DEFERRED
 - A **"Multiple areas"** toggle (off by default).
 - When on: add areas, each = **name** + **sq ft** + **its own features**.
-- Pricing handling: **combined into one total** vs **priced separately** on the
-  same estimate. *(See open question Q1.)*
+- Pricing handling, tech-selectable: **combined** vs **itemized in one estimate**
+  vs **separate HCP option per area**. The *separate-HCP-option* path needs the
+  Options feature machinery, so structured multi-area pricing is built **together
+  with the Options feature** (Phase 3). Descriptive multi-area already works via
+  the editable scope text.
 
 ---
 
@@ -130,12 +139,10 @@ Scope of Work needs:
 
 ## Open questions
 
-- **Q1 — "Price areas separately" output:** when multiple areas are priced
-  separately, what does the customer see?
-  (A) separate line-item groups within one estimate, one total;
-  (B) separate HCP options (Option #1 = Back Deck, #2 = Front Porch);
-  (C) two separate estimates.
-  *Lean: (A); (B) reserved for true either/or options.* — **pending**
+- ~~**Q1 — "Price areas separately" output**~~ → ✅ decided: tech chooses
+  **itemized in one estimate** (A) or **separate HCP option per area** (B).
+  Built with the Options feature (Phase 3). Descriptive multi-area already works
+  via the editable scope text.
 
 - ~~**Q2 — Power Washing line price**~~ → ✅ confirmed: cleaning **labor**
   total, materials shown only in the Materials section.
@@ -147,5 +154,7 @@ Scope of Work needs:
   pattern decided.
 - Section 2 (Power Washing / Wood Cleaning) **BUILT** — description approved,
   rot disclaimer appended, price = cleaning labor. Sections 3+ pending.
-- Section 1 (Scope of Work) still **spec-only** — needs new app UI (scope title,
-  areas, editable bullet lists, special notes) + Q1 resolution before build.
+- Section 1 (Scope of Work) **BUILT** (single-area + descriptive multi-area):
+  DB `scope_title`/`scope_description`, form card with auto-draft + editable text,
+  save/edit-prefill, estimate-view card, $0 HCP line. Structured per-area
+  *pricing* deferred to the Options feature (Phase 3).

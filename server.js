@@ -216,6 +216,8 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
         stain_customer_supplied: !!row.stain_customer_supplied,
         stain_vertical_sqft: row.stain_vertical_sqft,
         repairs_notes: row.repairs_notes,
+        scope_title: row.scope_title,
+        scope_description: row.scope_description,
       };
     })(),
     labels: {
@@ -387,6 +389,8 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       })
       .filter(r => r.flagged || r.lines.length > 0);
     const repairs_notes = (b.repairs_notes || "").trim() || null;
+    const scope_title = (b.scope_title || "").toString().slice(0, 200).trim() || null;
+    const scope_description = (b.scope_description || "").toString().slice(0, 8000).trim() || null;
     const debris_removal = Math.max(0, parseFloat(b.debris_removal) || 0);
     let extras = [];
     try { extras = b.extra_items ? JSON.parse(b.extra_items) : []; } catch (_) { extras = []; }
@@ -445,6 +449,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
           stain_two_color=?, stain_two_color_mode=?,
           repairs=?, repairs_notes=?, debris_removal=?,
           extra_items=?, discount_cents=?, discount_desc=?, pricing_snapshot=?,
+          scope_title=?, scope_description=?,
           updated_at=datetime('now')
         WHERE id=?
       `).run(
@@ -458,6 +463,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         stain_two_color, stain_two_color_mode,
         JSON.stringify(repairs), repairs_notes, debris_removal,
         JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown),
+        scope_title, scope_description,
         editId
       );
       return res.json({ ok: true, id: editId });
@@ -474,8 +480,9 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical, stain_vertical_sqft, staining_multiplier,
         stain_two_color, stain_two_color_mode,
         repairs, repairs_notes, debris_removal,
-        extra_items, discount_cents, discount_desc, pricing_snapshot, source_hcp_estimate_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        extra_items, discount_cents, discount_desc, pricing_snapshot, source_hcp_estimate_id,
+        scope_title, scope_description
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
@@ -486,7 +493,8 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       staining_enabled, stain_process, stain_color, stain_custom_desc, stain_customer_supplied, stain_vertical, stain_vertical_sqft, staining_multiplier,
       stain_two_color, stain_two_color_mode,
       JSON.stringify(repairs), repairs_notes, debris_removal,
-      JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown), source_hcp_estimate_id
+      JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown), source_hcp_estimate_id,
+      scope_title, scope_description
     );
     const estimateId = result.lastInsertRowid;
 

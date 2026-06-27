@@ -146,6 +146,9 @@ const MIGRATIONS = {
   repairs_notes: "TEXT",
   debris_removal: "REAL NOT NULL DEFAULT 0",
   discount_desc: "TEXT",
+  // Scope of Work (HCP estimate §1) — tech-editable narrative + short title.
+  scope_title: "TEXT",
+  scope_description: "TEXT",
 };
 const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
 for (const [name, ddl] of Object.entries(MIGRATIONS)) {
