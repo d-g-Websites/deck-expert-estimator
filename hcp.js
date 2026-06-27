@@ -279,10 +279,18 @@ async function firstAddressId(customerId) {
   }
 }
 
+// Walk-up estimates are scheduled for "today" with a default arrival window.
+function todayScheduleUTC(windowMinutes = 120) {
+  const start = new Date();
+  const end = new Date(start.getTime() + windowMinutes * 60 * 1000);
+  return { scheduled_start: start.toISOString(), scheduled_end: end.toISOString(), arrival_window: windowMinutes };
+}
+
 // Create an estimate in HCP for a customer. HCP estimates are multi-option, so
 // line items live under an option (options[].line_items), not at the top level.
+// opts.employeeId assigns the tech; opts.schedule (default true) puts it on today.
 // Returns the estimate id.
-export async function createEstimate(customerId, addressId, record, breakdown) {
+export async function createEstimate(customerId, addressId, record, breakdown, opts = {}) {
   const structLbl = (STRUCTURE_TYPES[record.structure_type] || {}).label || cap(record.structure_type);
   const woodLbl = (WOOD_TYPES[record.wood_type] || {}).label || label(record.wood_type);
   const noteParts = [
@@ -302,6 +310,8 @@ export async function createEstimate(customerId, addressId, record, breakdown) {
     note,
   };
   if (addressId) payload.address_id = addressId;
+  if (opts.employeeId) payload.assigned_employee_ids = [opts.employeeId];
+  if (opts.schedule !== false) payload.schedule = todayScheduleUTC(opts.windowMinutes || 120);
 
   const created = await hcpRequest("/estimates", { method: "POST", body: payload });
   const id = pickId(created, "id", "uuid") || pickId(created?.estimate || {}, "id", "uuid");
@@ -309,8 +319,12 @@ export async function createEstimate(customerId, addressId, record, breakdown) {
   return id;
 }
 
-// Orchestrates the full push: customer, address, then estimate.
-export async function sendEstimateToHcp(record, breakdown) {
+// Orchestrates the full push. When the app estimate was prefilled from an
+// existing HCP estimate (source_hcp_estimate_id) that still exists, we overwrite
+// it in place; otherwise we create a new scheduled+assigned estimate (walk-up).
+export async function sendEstimateToHcp(record, breakdown, opts = {}) {
+  const employeeId = opts.employeeId || null;
+  // NOTE: update-in-place branch wired in next; for now always create.
   const customerId = await upsertCustomer({
     name: record.customer_name,
     email: record.customer_email,
@@ -318,6 +332,6 @@ export async function sendEstimateToHcp(record, breakdown) {
     address: record.customer_address,
   });
   const addressId = await firstAddressId(customerId);
-  const estimateId = await createEstimate(customerId, addressId, record, breakdown);
-  return { customerId, estimateId };
+  const estimateId = await createEstimate(customerId, addressId, record, breakdown, { employeeId });
+  return { customerId, estimateId, mode: "created" };
 }

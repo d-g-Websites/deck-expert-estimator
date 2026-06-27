@@ -155,11 +155,15 @@ function render(e) {
   if (hb) hb.addEventListener('click', sendToHcp);
 }
 
+function getTechId() { try { return (JSON.parse(localStorage.getItem('hcp.tech') || 'null') || {}).id || null; } catch (_) { return null; } }
 async function sendToHcp() {
   const btn = document.getElementById('hcpBtn');
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
-    const res = await fetch('/api/estimate/' + id + '/send-to-hcp', { method: 'POST' });
+    const res = await fetch('/api/estimate/' + id + '/send-to-hcp', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: getTechId() }),
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Send failed');
     location.reload();

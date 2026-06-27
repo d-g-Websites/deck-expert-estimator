@@ -113,10 +113,14 @@ function buildRow(e) {
   return row;
 }
 
+function getTechId() { try { return (JSON.parse(localStorage.getItem('hcp.tech') || 'null') || {}).id || null; } catch (_) { return null; } }
 function pushToHcp(id, btn, row) {
   if (!confirm('Push estimate #' + id + ' to Housecall Pro?')) return;
   btn.classList.add('busy'); btn.textContent = 'Pushing…';
-  fetch('/api/estimate/' + id + '/send-to-hcp', { method: 'POST' })
+  fetch('/api/estimate/' + id + '/send-to-hcp', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employee_id: getTechId() }),
+  })
     .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status); return d; })
     .then(() => { btn.classList.remove('busy'); btn.textContent = '✓ Sent to HCP'; btn.disabled = true;
       const badge = row.querySelector('.badge'); if (badge) { badge.textContent = 'sent'; badge.className = 'badge sent'; } })
