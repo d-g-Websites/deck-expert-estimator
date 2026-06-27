@@ -532,8 +532,13 @@ app.post("/api/estimate/:id/send-to-hcp", requireAuth, async (req, res) => {
 
     res.json({ ok: true, hcp_customer_id: customerId, hcp_estimate_id: estimateId });
   } catch (err) {
-    console.error("[hcp] send error:", err);
-    res.status(502).json({ error: err.message || "Failed to send to Housecall Pro" });
+    console.error("[hcp] send error:", err, err.body || "");
+    let detail = err.message || "Failed to send to Housecall Pro";
+    if (err.body && typeof err.body === "object") {
+      const fields = err.body.errors || err.body.error_messages || err.body.details;
+      if (fields) detail += " — " + (typeof fields === "string" ? fields : JSON.stringify(fields));
+    }
+    res.status(502).json({ error: detail, hcp_status: err.status || null });
   }
 });
 

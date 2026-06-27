@@ -11,6 +11,8 @@
 // in this one file on purpose.
 // ---------------------------------------------------------------------------
 
+import { STAIN_PROCESSES, SANDING_CONDITIONS, WOOD_TYPES, STRUCTURE_TYPES } from "./pricing.js";
+
 // HCP's public API is served at the bare host (no /v1 path segment).
 const API_BASE = process.env.HCP_API_BASE || "https://api.housecallpro.com";
 // HCP API keys authenticate with "Bearer <key>" (matches the CSC app).
@@ -180,33 +182,63 @@ export async function upsertCustomer(customer) {
   return id;
 }
 
-// Build HCP line items (prices in cents) from our computed breakdown.
-function buildLineItems(record, breakdown) {
+// Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
+// sections shown on the estimate view so the HCP estimate total matches the app:
+// Cleaning, Sanding, Staining, Repairs, Materials, Extras, then a Discount line.
+export function buildLineItems(record, breakdown) {
   const items = [];
   const cents = (d) => Math.round((Number(d) || 0) * 100);
+  const b = breakdown || {};
+  const push = (name, dollars, { description, kind = "labor", taxable = false } = {}) => {
+    if (!(Number(dollars) > 0)) return;
+    items.push({ name, description: description || undefined, unit_price: cents(dollars), quantity: 1, kind, taxable });
+  };
 
-  if (breakdown.surface > 0) {
-    items.push({
-      name: `${cap(record.service_type)} — ${cap(record.structure_type)} surface`,
-      description: `${record.surface_sqft} sq ft of ${label(record.wood_type)}, ${label(record.opacity)}`,
-      unit_price: cents(breakdown.surface),
-      quantity: 1,
-      kind: "labor",
-      taxable: false,
-    });
+  // Cleaning / power washing
+  if (b.cleaning && b.cleaning.total > 0) {
+    const sqft = record.surface_sqft ? `${record.surface_sqft} sq ft` : null;
+    const desc = [sqft, record.has_railing ? "incl. railing" : null].filter(Boolean).join(", ");
+    push("Power washing / cleaning", b.cleaning.total, { description: desc || undefined });
   }
-  if (breakdown.railing > 0) {
-    items.push({ name: "Railing", unit_price: cents(breakdown.railing), quantity: 1, kind: "labor", taxable: false });
+
+  // Sanding / prep
+  if (b.sanding && b.sanding.total > 0) {
+    const lbl = (SANDING_CONDITIONS[record.sanding_condition] || {}).label || b.sanding.label || "";
+    push(lbl ? `Sanding / prep — ${lbl}` : "Sanding / prep", b.sanding.total);
   }
-  if (breakdown.stairs > 0) {
-    items.push({ name: `Stairs (${record.stairs_count} steps)`, unit_price: cents(breakdown.stairs), quantity: 1, kind: "labor", taxable: false });
+
+  // Staining / sealing
+  if (b.staining && b.staining.total > 0) {
+    const lbl = (STAIN_PROCESSES[record.stain_process] || {}).label || "";
+    const desc = (record.stain_color || record.stain_custom_desc || "") || undefined;
+    push(lbl ? `Staining / sealing — ${lbl}` : "Staining / sealing", b.staining.total, { description: desc });
   }
-  for (const x of breakdown.extras_list || []) {
-    items.push({ name: x.description, unit_price: cents(x.price), quantity: 1, kind: "labor", taxable: false });
+
+  // Repairs / replacement
+  if (b.repairs && b.repairs.total > 0) {
+    const lines = (b.repairs.items || [])
+      .filter(i => (Number(i.cost) || 0) > 0)
+      .map(i => (i.qty > 1 ? `${i.qty}× ` : "") + (i.item_label || i.item_id));
+    push("Repairs / replacement", b.repairs.total, { description: lines.join("; ") || undefined });
   }
-  if (breakdown.discount > 0) {
-    items.push({ name: "Discount", unit_price: -cents(breakdown.discount), quantity: 1, kind: "discount", taxable: false });
+
+  // Materials & supplies
+  if (b.materials && b.materials.total > 0) {
+    const desc = (b.materials.items || []).map(i => i.label).filter(Boolean).join("; ");
+    push("Materials & supplies", b.materials.total, { description: desc || undefined });
   }
+
+  // Extra services (one line each)
+  for (const x of b.extras_list || []) {
+    if (x && Number(x.price) > 0) push(x.description || "Extra service", x.price);
+  }
+
+  // Discount (negative line)
+  if (b.discount > 0) {
+    const name = b.discount_label ? `Discount — ${b.discount_label}` : "Discount";
+    items.push({ name, unit_price: -cents(b.discount), quantity: 1, kind: "discount", taxable: false });
+  }
+
   return items;
 }
 
@@ -215,10 +247,17 @@ function label(s) { return (s || "").replace(/_/g, " "); }
 
 // Create an estimate in HCP for a customer. Returns the estimate id.
 export async function createEstimate(customerId, record, breakdown) {
+  const structLbl = (STRUCTURE_TYPES[record.structure_type] || {}).label || cap(record.structure_type);
+  const woodLbl = (WOOD_TYPES[record.wood_type] || {}).label || label(record.wood_type);
+  const noteParts = [
+    `Deck Expert Estimator #${record.id} — ${structLbl}${woodLbl ? `, ${woodLbl}` : ""}.`,
+    record.repairs_notes ? `Repair notes: ${record.repairs_notes}` : null,
+    breakdown && breakdown.total != null ? `App total: $${Number(breakdown.total).toFixed(2)}.` : null,
+  ].filter(Boolean);
   const payload = {
     customer_id: customerId,
     line_items: buildLineItems(record, breakdown),
-    note: `Estimate #${record.id} — ${cap(record.structure_type)} ${record.service_type} (${label(record.wood_type)}). Generated by Deck Expert Estimator.`,
+    note: noteParts.join(" "),
   };
   const created = await hcpRequest("/estimates", { method: "POST", body: payload });
   const id = pickId(created, "id", "uuid") || pickId(created?.estimate || {}, "id", "uuid");

@@ -48,8 +48,8 @@ Copy `.env.example` → `.env`:
 | `SESSION_SECRET` | ✅ | Cookie signing (`openssl rand -hex 32`) |
 | `OPENAI_API_KEY` | optional | Enables the Visualizer |
 | `HCP_API_KEY` | optional | Enables Housecall Pro sync (HCP **MAX** plan) |
-| `HCP_API_BASE` | optional | Defaults to `https://api.housecallpro.com/v1` |
-| `HCP_AUTH_SCHEME` | optional | `Token` (default) or `Bearer` |
+| `HCP_API_BASE` | optional | Defaults to `https://api.housecallpro.com` |
+| `HCP_AUTH_SCHEME` | optional | `Bearer` (default) or `Token` |
 | `PORT` | optional | Defaults to `3000` |
 
 The app runs fine without `OPENAI_API_KEY`/`HCP_API_KEY` — those features just
