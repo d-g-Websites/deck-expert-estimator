@@ -97,9 +97,10 @@ per job. Consistency without forcing every nuance into rigid fields.
 - **Shown only when cleaning is enabled** — skip the line entirely if no
   cleaning is needed.
 - **Price:** cleaning **labor** = `breakdown.cleaning.total` (materials are
-  carried separately in the Materials section). *(See open question Q2.)*
+  carried separately in the Materials section). ✅ confirmed (Q2)
+- **Status:** ✅ **BUILT** in `hcp.js` (`buildLineItems`).
 
-### Description (reworded — pending final approval)
+### Description (approved)
 > Our wood restoration process begins by applying a dedicated wood cleaner and
 > power washing the surface to effectively remove dirt, grime, and built-up
 > residue. When needed, we follow with a wood brightener to revive the wood's
@@ -136,14 +137,15 @@ Scope of Work needs:
   (C) two separate estimates.
   *Lean: (A); (B) reserved for true either/or options.* — **pending**
 
-- **Q2 — Power Washing line price:** confirm the line carries the cleaning
-  **labor** total (`breakdown.cleaning.total`), with materials shown only in the
-  Materials section. — **pending**
+- ~~**Q2 — Power Washing line price**~~ → ✅ confirmed: cleaning **labor**
+  total, materials shown only in the Materials section.
 
 ---
 
 ## Changelog
 - Section 1 (Scope of Work) captured; generation approach + responsibilities
   pattern decided.
-- Section 2 (Power Washing / Wood Cleaning) captured; description reworded
-  (pending approval), default rot disclaimer recorded. Sections 3+ pending.
+- Section 2 (Power Washing / Wood Cleaning) **BUILT** — description approved,
+  rot disclaimer appended, price = cleaning labor. Sections 3+ pending.
+- Section 1 (Scope of Work) still **spec-only** — needs new app UI (scope title,
+  areas, editable bullet lists, special notes) + Q1 resolution before build.

@@ -204,6 +204,18 @@ export async function upsertCustomer(customer) {
   return id;
 }
 
+// --- Estimate section copy (see docs/hcp-estimate-content.md) ---
+// §2 Power Washing / Wood Cleaning
+const POWER_WASH_DESC =
+  "Our wood restoration process begins by applying a dedicated wood cleaner and " +
+  "power washing the surface to effectively remove dirt, grime, and built-up residue. " +
+  "When needed, we follow with a wood brightener to revive the wood's natural color and " +
+  "vibrancy. The cost of these cleaning materials is included in the Materials section.";
+const POWER_WASH_DISCLAIMER =
+  "*Power washing may uncover additional rot not detected during the initial estimate. " +
+  "Any additional replacement required is not included in this quote, as it will be " +
+  "assessed separately upon discovery.";
+
 // Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
 // sections shown on the estimate view so the HCP estimate total matches the app:
 // Cleaning, Sanding, Staining, Repairs, Materials, Extras, then a Discount line.
@@ -216,11 +228,11 @@ export function buildLineItems(record, breakdown) {
     items.push({ name, description: description || undefined, unit_price: cents(dollars), quantity: 1, kind, taxable });
   };
 
-  // Cleaning / power washing
+  // §2 Power Washing / Wood Cleaning (cleaning labor; materials shown separately)
   if (b.cleaning && b.cleaning.total > 0) {
-    const sqft = record.surface_sqft ? `${record.surface_sqft} sq ft` : null;
-    const desc = [sqft, record.has_railing ? "incl. railing" : null].filter(Boolean).join(", ");
-    push("Power washing / cleaning", b.cleaning.total, { description: desc || undefined });
+    push("Power Washing / Wood Cleaning", b.cleaning.total, {
+      description: POWER_WASH_DESC + "\n\n" + POWER_WASH_DISCLAIMER,
+    });
   }
 
   // Sanding / prep
