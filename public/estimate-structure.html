@@ -61,6 +61,10 @@
       <span class="sub" id="syncMeta"></span>
       <button type="button" class="icon-btn" id="refreshBtn" style="display:none">Refresh</button>
     </div>
+    <div id="techRow" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem">
+      <label for="techPicker" style="font-weight:600;white-space:nowrap">Estimating as</label>
+      <select id="techPicker" style="flex:1;padding:0.5rem"><option value="">Loading…</option></select>
+    </div>
     <div id="syncContainer">
       <button type="button" class="big-sync" id="syncBtn">Sync today's appointments from Housecall Pro</button>
     </div>
@@ -84,6 +88,34 @@ const syncError = document.getElementById('syncError');
 const prefillBanner = document.getElementById('prefillBanner');
 const prefillName = document.getElementById('prefillName');
 const prefillSub = document.getElementById('prefillSub');
+const techPicker = document.getElementById('techPicker');
+
+// --- Tech picker (remembered per device; used to assign/schedule and filter sync) ---
+const TECH_KEY = 'hcp.tech';
+function getTech() { try { return JSON.parse(localStorage.getItem(TECH_KEY) || 'null'); } catch (_) { return null; } }
+function setTech(t) { if (t && t.id) localStorage.setItem(TECH_KEY, JSON.stringify(t)); else localStorage.removeItem(TECH_KEY); }
+async function loadTechs() {
+  try {
+    const res = await fetch('/api/hcp/employees');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    const saved = getTech();
+    techPicker.innerHTML = '<option value="">— select tech —</option>' +
+      (data.employees || []).map(e => '<option value="' + e.id + '">' + e.name + (e.role ? ' (' + e.role + ')' : '') + '</option>').join('');
+    if (saved && saved.id) techPicker.value = saved.id;
+  } catch (e) {
+    techPicker.innerHTML = '<option value="">Could not load techs</option>';
+  }
+}
+techPicker.addEventListener('change', () => {
+  const opt = techPicker.selectedOptions[0];
+  setTech(techPicker.value ? { id: techPicker.value, name: opt ? opt.textContent : '' } : null);
+  // Show this tech's cached list if we have one, otherwise prompt a fresh sync.
+  apptList.innerHTML = '';
+  const raw = localStorage.getItem(cacheKey());
+  if (raw) { try { const c = JSON.parse(raw); renderAppts(c.estimates || [], c.syncedAt); } catch (_) {} }
+  else { syncContainer.style.display = ''; refreshBtn.style.display = 'none'; syncMeta.textContent = ''; }
+});
 
 // --- structure grid ---
 fetch('/api/config').then(r => r.json()).then(cfg => {
@@ -97,12 +129,12 @@ fetch('/api/config').then(r => r.json()).then(cfg => {
     if (!info.enabled) a.classList.add('soon-card');
     grid.appendChild(a);
   }
-  if (cfg.hcp_enabled) { syncCard.style.display = 'block'; initSync(); }
+  if (cfg.hcp_enabled) { syncCard.style.display = 'block'; loadTechs(); initSync(); }
 });
 
 // --- HCP "today's appointments" sync ---
 const centralYmd = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const cacheKey = () => 'scheduledToday:' + centralYmd();
+const cacheKey = () => { const t = getTech(); return 'scheduledToday:' + centralYmd() + ':' + ((t && t.id) || 'all'); };
 function fmtCentralTime(iso) {
   if (!iso) return '';
   try { return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)); } catch (_) { return ''; }
@@ -162,7 +194,9 @@ document.getElementById('clearPrefill').addEventListener('click', () => { sessio
 async function sync() {
   syncBtn.disabled = true; refreshBtn.disabled = true; syncBtn.textContent = 'Syncing…'; syncError.style.display = 'none';
   try {
-    const res = await fetch('/api/hcp/scheduled-today');
+    const tech = getTech();
+    const qs = tech && tech.id ? '?employee_id=' + encodeURIComponent(tech.id) : '';
+    const res = await fetch('/api/hcp/scheduled-today' + qs);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Sync failed');
     const syncedAt = new Date().toISOString();

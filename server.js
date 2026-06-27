@@ -11,7 +11,7 @@ import {
   STAINING_PRICING, STAIN_PROCESSES, TWO_COLOR_SURCHARGE, REPAIR_ITEMS, REPAIR_MATERIALS, LUMBER, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
-import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday } from "./hcp.js";
+import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday, hcpEmployees } from "./hcp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -118,10 +118,17 @@ app.get("/api/hcp/test", requireAuth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get("/api/hcp/employees", requireAuth, async (req, res) => {
+  if (!hcpEnabled()) return res.status(503).json({ error: "Housecall Pro not configured" });
+  try { res.json({ ok: true, employees: await hcpEmployees() }); }
+  catch (err) { res.status(500).json({ error: err.message || "Failed to fetch employees" }); }
+});
+
 app.get("/api/hcp/scheduled-today", requireAuth, async (req, res) => {
   try {
     if (!hcpEnabled()) return res.status(503).json({ error: "Housecall Pro not configured" });
-    const result = await scheduledToday();
+    const employeeId = (req.query.employee_id || "").toString().trim() || null;
+    const result = await scheduledToday(employeeId);
     res.json({ ok: true, ...result });
   } catch (err) {
     console.error("[scheduled-today] error:", err.message);

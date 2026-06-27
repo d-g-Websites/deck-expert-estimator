@@ -84,9 +84,30 @@ export async function hcpTest() {
   return result;
 }
 
+// List employees (techs) for the in-app tech picker.
+export async function hcpEmployees() {
+  const data = await hcpRequest("/employees?page_size=200");
+  const list = hcpListFromResponse(data, "employees");
+  return list
+    .map(e => ({
+      id: pickId(e, "id", "uuid"),
+      name: `${e.first_name || ""} ${e.last_name || ""}`.trim() || e.email || "(unnamed)",
+      role: e.role || null,
+    }))
+    .filter(e => e.id);
+}
+
+// Does an estimate's assigned_employees include the given employee id?
+function estimateAssignedTo(est, employeeId) {
+  if (!employeeId) return true;
+  const emps = Array.isArray(est.assigned_employees) ? est.assigned_employees : [];
+  return emps.some(e => pickId(e, "id", "uuid") === employeeId);
+}
+
 // Pull estimates scheduled in HCP for today (Chicago time), with customer
 // contact info resolved, so a rep can tap one to prefill a new estimate.
-export async function scheduledToday() {
+// When employeeId is given, only that tech's appointments are returned.
+export async function scheduledToday(employeeId = null) {
   const { start, end, ymd } = centralDayBoundsUTC();
   const qs = `scheduled_start_min=${encodeURIComponent(start)}&scheduled_start_max=${encodeURIComponent(end)}&per_page=100`;
   const data = await hcpRequest(`/estimates?${qs}`);
@@ -94,6 +115,7 @@ export async function scheduledToday() {
   const customerCache = new Map();
   const out = [];
   for (const est of estimates) {
+    if (!estimateAssignedTo(est, employeeId)) continue;
     let cust = est.customer;
     const custId = (cust && cust.id) || est.customer_id;
     if (!cust && custId) {
