@@ -245,7 +245,7 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
         stain_two_color: !!row.stain_two_color, stain_two_color_mode: row.stain_two_color_mode,
       };
     })(),
-    hcp: { customer_id: row.hcp_customer_id, estimate_id: row.hcp_estimate_id, synced_at: row.hcp_synced_at, enabled: hcpEnabled() },
+    hcp: { customer_id: row.hcp_customer_id, estimate_id: row.hcp_estimate_id, synced_at: row.hcp_synced_at, enabled: hcpEnabled(), source_estimate_id: row.source_hcp_estimate_id || null },
     photos: photos.map(p => ({
       id: p.id, filename: p.filename, kind: p.kind, swatch_id: p.swatch_id,
       swatch_name: p.swatch_id ? (SWATCHES[p.swatch_id] ? `${SWATCHES[p.swatch_id].brand_name} ${SWATCHES[p.swatch_id].name}` : p.swatch_id) : null,

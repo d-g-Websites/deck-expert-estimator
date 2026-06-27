@@ -286,19 +286,67 @@ function todayScheduleUTC(windowMinutes = 120) {
   return { scheduled_start: start.toISOString(), scheduled_end: end.toISOString(), arrival_window: windowMinutes };
 }
 
+// Human-readable note summarizing the app estimate (shown on the HCP estimate).
+function buildNote(record, breakdown) {
+  const structLbl = (STRUCTURE_TYPES[record.structure_type] || {}).label || cap(record.structure_type);
+  const woodLbl = (WOOD_TYPES[record.wood_type] || {}).label || label(record.wood_type);
+  return [
+    `Deck Expert Estimator #${record.id} — ${structLbl}${woodLbl ? `, ${woodLbl}` : ""}.`,
+    record.repairs_notes ? `Repair notes: ${record.repairs_notes}` : null,
+    breakdown && breakdown.total != null ? `App total: $${Number(breakdown.total).toFixed(2)}.` : null,
+  ].filter(Boolean).join(" ");
+}
+
+// Fetch an estimate by id, or null if it no longer exists in HCP.
+async function getEstimate(estimateId) {
+  try {
+    return await hcpRequest(`/estimates/${estimateId}`);
+  } catch (e) {
+    if (e.status === 404) return null;
+    throw e;
+  }
+}
+
+// Has any option already been approved? (We don't overwrite approved estimates.)
+function isApproved(est) {
+  const opts = Array.isArray(est && est.options) ? est.options : [];
+  return opts.some(o => (o.approval_status || "").toString().toLowerCase() === "approved");
+}
+
+const optLineItemsPath = (estId, optId) => `/estimates/${estId}/options/${optId}/line_items`;
+
+// Overwrite an option's line items: remove what's there, then add ours.
+async function replaceLineItems(estimateId, optionId, lineItems) {
+  const data = await hcpRequest(`${optLineItemsPath(estimateId, optionId)}?page_size=200`);
+  const existing = hcpListFromResponse(data, "line_items");
+  for (const li of existing) {
+    const liId = pickId(li, "id", "uuid");
+    if (liId) await hcpRequest(`${optLineItemsPath(estimateId, optionId)}/${liId}`, { method: "DELETE" });
+  }
+  for (const li of lineItems) {
+    await hcpRequest(optLineItemsPath(estimateId, optionId), { method: "POST", body: li });
+  }
+}
+
+// Update a linked HCP estimate in place: overwrite the main option's line items
+// and refresh the note. Schedule, appointment, and assigned tech are untouched.
+async function updateEstimateInPlace(est, record, breakdown) {
+  const opts = Array.isArray(est.options) ? est.options : [];
+  const mainOpt = opts[0];
+  if (!mainOpt) throw new Error("Linked HCP estimate has no option to update");
+  const optId = pickId(mainOpt, "id", "uuid");
+  await replaceLineItems(est.id, optId, buildLineItems(record, breakdown));
+  // Refresh the estimate note (best-effort — non-fatal if the field isn't writable).
+  try { await hcpRequest(`/estimates/${est.id}`, { method: "PATCH", body: { note: buildNote(record, breakdown) } }); } catch (_) {}
+  return pickId(est.customer || {}, "id", "uuid");
+}
+
 // Create an estimate in HCP for a customer. HCP estimates are multi-option, so
 // line items live under an option (options[].line_items), not at the top level.
 // opts.employeeId assigns the tech; opts.schedule (default true) puts it on today.
 // Returns the estimate id.
 export async function createEstimate(customerId, addressId, record, breakdown, opts = {}) {
-  const structLbl = (STRUCTURE_TYPES[record.structure_type] || {}).label || cap(record.structure_type);
-  const woodLbl = (WOOD_TYPES[record.wood_type] || {}).label || label(record.wood_type);
-  const noteParts = [
-    `Deck Expert Estimator #${record.id} — ${structLbl}${woodLbl ? `, ${woodLbl}` : ""}.`,
-    record.repairs_notes ? `Repair notes: ${record.repairs_notes}` : null,
-    breakdown && breakdown.total != null ? `App total: $${Number(breakdown.total).toFixed(2)}.` : null,
-  ].filter(Boolean);
-  const note = noteParts.join(" ");
+  const note = buildNote(record, breakdown);
 
   const payload = {
     customer_id: customerId,
@@ -324,7 +372,20 @@ export async function createEstimate(customerId, addressId, record, breakdown, o
 // it in place; otherwise we create a new scheduled+assigned estimate (walk-up).
 export async function sendEstimateToHcp(record, breakdown, opts = {}) {
   const employeeId = opts.employeeId || null;
-  // NOTE: update-in-place branch wired in next; for now always create.
+  const sourceId = (record.source_hcp_estimate_id || "").toString().trim() || null;
+
+  // Update path: prefilled from an existing HCP estimate that's still there and
+  // not yet approved → overwrite it in place (schedule/appointment/tech kept).
+  if (sourceId) {
+    const est = await getEstimate(sourceId);
+    if (est && !isApproved(est)) {
+      const customerId = await updateEstimateInPlace(est, record, breakdown);
+      return { customerId, estimateId: sourceId, mode: "updated" };
+    }
+    // Missing (deleted in HCP) or already approved → fall through to create new.
+  }
+
+  // Create path: walk-up (or source gone) → new estimate scheduled today + assigned.
   const customerId = await upsertCustomer({
     name: record.customer_name,
     email: record.customer_email,
