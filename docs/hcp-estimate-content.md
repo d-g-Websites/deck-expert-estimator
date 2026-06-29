@@ -123,11 +123,13 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
 
 ---
 
-## Section 3 — Sanding / Surface Preparation  *(line item)*  — pending approval
+## Section 3 — Sanding / Surface Preparation  *(line item)*  — ✅ BUILT
 
 - **Shown only when a sanding condition is selected** (skip if none / no sanding).
 - **Price:** sanding **labor** = `breakdown.sanding.total` (sanding supply is in
   the Materials section).
+- **Status:** ✅ **BUILT** in `hcp.js` (`buildLineItems`). Light Sanding kept
+  minimal (no hardware line).
 - **Name + description vary by `sanding_condition`:**
 
 | `sanding_condition` | Line name |

@@ -11,7 +11,7 @@
 // in this one file on purpose.
 // ---------------------------------------------------------------------------
 
-import { STAIN_PROCESSES, SANDING_CONDITIONS, WOOD_TYPES, STRUCTURE_TYPES } from "./pricing.js";
+import { STAIN_PROCESSES, WOOD_TYPES, STRUCTURE_TYPES } from "./pricing.js";
 
 // HCP's public API is served at the bare host (no /v1 path segment).
 const API_BASE = process.env.HCP_API_BASE || "https://api.housecallpro.com";
@@ -216,6 +216,53 @@ const POWER_WASH_DISCLAIMER =
   "Any additional replacement required is not included in this quote, as it will be " +
   "assessed separately upon discovery.";
 
+// §3 Sanding / Surface Preparation — name + description vary by sanding_condition.
+const SANDING_COPY = {
+  never_finished: {
+    name: "Light Sanding",
+    description:
+      "A light sanding to smooth out surface imperfections and remove roughness from the " +
+      "wood's texture, creating a clean, even base for the final application.",
+  },
+  standard: { // oil_before, latex_before
+    name: "Standard Sanding / Surface Preparation",
+    description:
+      "Our surface preparation includes a complete sanding of the deck in preparation for the " +
+      "final application, ensuring optimal adhesion and a smooth, uniform finish. This includes " +
+      "power sanding of all horizontal surfaces for thorough, consistent results.\n" +
+      "- Light sanding of accessible vertical surfaces is performed as needed, at the technician's " +
+      "discretion based on accessibility and the specific requirements of the project.\n" +
+      "- Any loose nails, screws, or bolts discovered during the work are tightened and secured to " +
+      "maintain the stability and safety of the deck surface. This inspection focuses on critical, " +
+      "accessible areas to uphold structural integrity and does not cover every piece of hardware on the deck.\n\n" +
+      "Note: Please note that this process will not completely remove existing coatings. Alternative " +
+      "methods such as chemical stripping or sanding to bare wood are available upon request; however, " +
+      "even with these methods, complete removal of previous coatings cannot be guaranteed. We provide " +
+      "the most effective solutions available, but absolute removal is not assured.",
+  },
+  stain_removal: {
+    name: "Sanding to Bare Wood / Complete Stain Removal",
+    description:
+      "This service involves an aggressive sanding to remove the existing coating and bring the wood " +
+      "back to a bare surface, creating the ideal foundation for the new finish and maximizing adhesion. " +
+      "We power sand all horizontal surfaces for thorough, consistent results, and lightly sand accessible " +
+      "vertical surfaces as needed, at the technician's discretion based on accessibility and project requirements.\n" +
+      "- Any loose nails, screws, or bolts discovered during the work are tightened and secured to maintain " +
+      "the stability and safety of the deck surface. This inspection focuses on critical, accessible areas " +
+      "and does not cover every piece of hardware on the deck.\n\n" +
+      "Note: Please note that while this process is intended to return the wood to a bare surface, complete " +
+      "removal of all existing coatings cannot be guaranteed. Aged stains, deep penetration, and weathering " +
+      "may leave residual coating or discoloration in some areas. We use the most effective methods available " +
+      "to achieve the best possible result, but absolute removal is not assured.",
+  },
+};
+function sandingCopyFor(cond) {
+  if (cond === "never_finished") return SANDING_COPY.never_finished;
+  if (cond === "oil_before" || cond === "latex_before") return SANDING_COPY.standard;
+  if (cond === "stain_removal") return SANDING_COPY.stain_removal;
+  return null;
+}
+
 // Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
 // sections shown on the estimate view so the HCP estimate total matches the app:
 // Cleaning, Sanding, Staining, Repairs, Materials, Extras, then a Discount line.
@@ -245,10 +292,11 @@ export function buildLineItems(record, breakdown) {
     });
   }
 
-  // Sanding / prep
+  // §3 Sanding / Surface Preparation (sanding labor; supply shown in Materials)
   if (b.sanding && b.sanding.total > 0) {
-    const lbl = (SANDING_CONDITIONS[record.sanding_condition] || {}).label || b.sanding.label || "";
-    push(lbl ? `Sanding / prep — ${lbl}` : "Sanding / prep", b.sanding.total);
+    const copy = sandingCopyFor(record.sanding_condition);
+    if (copy) push(copy.name, b.sanding.total, { description: copy.description });
+    else push("Sanding / Surface Preparation", b.sanding.total);
   }
 
   // Staining / sealing
