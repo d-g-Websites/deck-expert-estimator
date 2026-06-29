@@ -90,7 +90,7 @@
 
   <form id="estimateForm">
     <div class="section-nav">
-      <button type="button" class="section-nav-btn" id="navScope">Scope of Work</button>
+      <button type="button" class="section-nav-btn" id="navScope">See Draft</button>
       <button type="button" class="section-nav-btn" id="navRepairs">Repairs</button>
       <button type="button" class="section-nav-btn" id="navMultiplier">Multiplier %</button>
     </div>
@@ -316,7 +316,7 @@
 <div id="scopeScreen" class="repairs-screen" style="display:none">
   <div class="topbar">
     <a href="#" class="back" id="scopeBack">← Back to estimate</a>
-    <h1>Scope of Work</h1>
+    <h1>Estimate Draft</h1>
   </div>
   <main>
     <div class="card">
@@ -1175,7 +1175,7 @@ function buildScopeDraft() {
 }
 function updateScopePreview() {
   const filled = !!(scopeDescEl.value || '').trim();
-  const nav = $('navScope'); if (nav) nav.textContent = filled ? 'Scope of Work ✓' : 'Scope of Work';
+  const nav = $('navScope'); if (nav) nav.textContent = filled ? 'See Draft ✓' : 'See Draft';
   const prev = $('scopePreview'); // optional inline preview (not always present)
   if (prev) { prev.textContent = filled ? scopeDescEl.value.trim() : 'No draft yet.'; prev.style.opacity = filled ? '0.85' : '0.6'; }
 }
