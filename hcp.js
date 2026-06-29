@@ -263,6 +263,21 @@ function sandingCopyFor(cond) {
   return null;
 }
 
+// §4 Staining / Sealing — per-product intro + shared caveats (appended to all).
+const STAIN_CAVEATS =
+  "- Please note that variations in color and sheen may occur.\n" +
+  "- Knots and areas of hard grain may remain lighter or whiter after application.\n" +
+  "- New board installations may show color variations relative to the existing decking due to " +
+  "differences in age and condition. We strive for a consistent appearance, but natural variation may occur.";
+const STAIN_COPY = {
+  rymar_oil_seal: {
+    name: "Application of Sealer — Oil-Based Semi-Transparent Rymar Xtreme Weather Sealer",
+    intro: "Our service includes the application of one coat of oil-based semi-transparent Rymar " +
+      "Xtreme Weather Sealer, in a color selected by the customer.",
+  },
+  // bm_solid, ipe_oil, customer_oil, customer_acrylic — wording pending.
+};
+
 // Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
 // sections shown on the estimate view so the HCP estimate total matches the app:
 // Cleaning, Sanding, Staining, Repairs, Materials, Extras, then a Discount line.
@@ -299,11 +314,13 @@ export function buildLineItems(record, breakdown) {
     else push("Sanding / Surface Preparation", b.sanding.total);
   }
 
-  // Staining / sealing
+  // §4 Staining / Sealing (staining labor; stain product in Materials)
   if (b.staining && b.staining.total > 0) {
-    const lbl = (STAIN_PROCESSES[record.stain_process] || {}).label || "";
-    const desc = (record.stain_color || record.stain_custom_desc || "") || undefined;
-    push(lbl ? `Staining / sealing — ${lbl}` : "Staining / sealing", b.staining.total, { description: desc });
+    const copy = STAIN_COPY[record.stain_process];
+    const procLbl = (STAIN_PROCESSES[record.stain_process] || {}).label || "";
+    const name = copy ? copy.name : (procLbl ? `Staining / Sealing — ${procLbl}` : "Staining / Sealing");
+    const desc = copy ? (copy.intro + "\n" + STAIN_CAVEATS) : STAIN_CAVEATS;
+    push(name, b.staining.total, { description: desc });
   }
 
   // Repairs / replacement

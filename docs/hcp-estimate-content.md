@@ -181,6 +181,35 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
 
 ---
 
+## Section 4 — Staining / Sealing  *(line item)*  — ✅ BUILT (Rymar); others pending wording
+
+- **Shown only when staining is enabled** (skip if `staining.total` is 0).
+- **Price:** staining **labor** = `breakdown.staining.total` (stain product is in
+  the Materials section).
+- **Name + intro vary by `stain_process`**; the **three caveats are shared** and
+  appended to **every** staining line.
+- **Color:** NOT inserted yet (deferred) — intro says "in a color selected by the
+  customer."
+
+### Shared caveats (appended to all staining lines)
+> - Please note that variations in color and sheen may occur.
+> - Knots and areas of hard grain may remain lighter or whiter after application.
+> - New board installations may show color variations relative to the existing
+>   decking due to differences in age and condition. We strive for a consistent
+>   appearance, but natural variation may occur.
+
+### Rymar (`rymar_oil_seal`) — ✅ BUILT
+- **Name:** Application of Sealer — Oil-Based Semi-Transparent Rymar Xtreme Weather Sealer
+- **Intro:** Our service includes the application of one coat of oil-based
+  semi-transparent Rymar Xtreme Weather Sealer, in a color selected by the customer.
+
+### Pending wording (user to provide)
+- `bm_solid` (Benjamin Moore Solid), `ipe_oil` (IPE Oil), `customer_oil` /
+  `customer_acrylic` (customer-supplied). Until provided, these fall back to
+  name = process label + shared caveats.
+
+---
+
 ## Data model implications (running list)
 
 Scope of Work needs:
