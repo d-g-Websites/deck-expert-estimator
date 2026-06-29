@@ -213,9 +213,14 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 - **Product notes:** (1) project limited to one color selection; (2) white/light
   colors may need an extra coat at additional labor+materials cost.
 
+### IPE Oil (`ipe_oil`) — ✅ BUILT
+- **Name:** Application of Deck-Wise IPE Oil
+- **Intro:** 3-paragraph Deck-Wise Ipe oil blurb (grammar lightly polished;
+  fence/etc. tied to Scope of Work). + shared caveats.
+
 ### Pending wording (user to provide)
-- `ipe_oil` (IPE Oil), `customer_oil` / `customer_acrylic` (customer-supplied).
-  Until provided, these fall back to name = process label + shared caveats.
+- `customer_oil` / `customer_acrylic` (customer-supplied). Until provided, these
+  fall back to name = process label + shared caveats.
 
 ---
 

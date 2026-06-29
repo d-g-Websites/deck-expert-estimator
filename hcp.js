@@ -285,7 +285,21 @@ const STAIN_COPY = {
       "This additional coat can be provided for an extra charge covering both labor and materials.",
     ],
   },
-  // ipe_oil, customer_oil, customer_acrylic — wording pending.
+  ipe_oil: {
+    name: "Application of Deck-Wise IPE Oil",
+    intro:
+      "Our service involves applying one coat of Deck-Wise Ipe oil-based sealer to your deck, privacy " +
+      "fence, and other surfaces noted in the Scope of Work. This premium sealer is specifically designed " +
+      "for exotic hardwoods.\n\n" +
+      "Trans-oxide pigments protect against UV damage and preserve the natural beauty of exterior hardwoods " +
+      "with minimal raising of the grain. Ipe Oil protects, nourishes, and conditions the wood from within " +
+      "while maintaining a completely natural appearance.\n\n" +
+      "Due to the nature of exotic wood, annual maintenance is required to maintain the finished appearance. " +
+      "When included as part of a yearly hardwood maintenance program, Deck-Wise formulas provide proven " +
+      "wood-nurturing benefits and visible results — offering exceptional protection against splits, warping, " +
+      "and cracking, while helping prevent the graying of hardwoods.",
+  },
+  // customer_oil, customer_acrylic — wording pending.
 };
 
 // Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
