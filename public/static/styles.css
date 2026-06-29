@@ -23,8 +23,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); marg
 .topbar .back:hover { background: rgba(255,255,255,0.12); }
 .topbar .logout { background: none; border: 1px solid rgba(255,255,255,0.35); color: #fff; padding: 0.4rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 .topbar .logout:hover { background: rgba(255,255,255,0.12); }
-.section-nav { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
-.section-nav-btn { flex: 1; padding: 1.1rem 1rem; font-size: 1.1rem; font-weight: 700; color: #fff; background: var(--amber); border: none; border-radius: var(--radius); cursor: pointer; box-shadow: 0 2px 6px rgba(77,46,32,0.18); transition: background 0.15s, transform 0.05s; }
+.section-nav { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+.section-nav-btn { flex: 1 1 28%; min-width: 8rem; padding: 1.1rem 1rem; font-size: 1.1rem; font-weight: 700; color: #fff; background: var(--amber); border: none; border-radius: var(--radius); cursor: pointer; box-shadow: 0 2px 6px rgba(77,46,32,0.18); transition: background 0.15s, transform 0.05s; }
 .section-nav-btn:hover { background: var(--amber-dark); }
 .section-nav-btn:active { transform: translateY(1px); }
 @media (max-width: 480px) { .section-nav-btn { font-size: 1rem; padding: 0.95rem 0.75rem; } }

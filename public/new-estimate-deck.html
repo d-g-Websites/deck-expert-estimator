@@ -92,6 +92,7 @@
     <div class="section-nav">
       <button type="button" class="section-nav-btn" id="navScope">Scope of Work</button>
       <button type="button" class="section-nav-btn" id="navRepairs">Repairs</button>
+      <button type="button" class="section-nav-btn" id="navMultiplier">Multiplier %</button>
     </div>
     <section class="card">
       <h2>Photos</h2>
@@ -255,7 +256,6 @@
         <div class="dollar-input"><span>$</span><input type="number" id="discount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         <div class="hint">The estimate will note this discount is valid only if the work is approved within 30 days.</div>
       </div>
-      <button type="button" class="btn secondary" id="openMultiplier" style="width:100%;margin-top:0.85rem">→ Internal multiplier (%)</button>
     </section>
 
     <section class="card total-card">
@@ -1093,7 +1093,7 @@ document.querySelectorAll('.of-remove').forEach(btn => btn.addEventListener('cli
   if (btn.dataset.target === 'discount') { $('discountField').style.display = 'none'; els.discount.value = ''; $('discount_desc').value = ''; }
   updateTotal();
 }));
-$('openMultiplier').addEventListener('click', openMultiplier);
+$('navMultiplier').addEventListener('click', openMultiplier);
 function openMultiplier() { $('multiplierScreen').style.display = 'block'; window.scrollTo(0, 0); }
 function closeMultiplier() { $('multiplierScreen').style.display = 'none'; updateTotal(); window.scrollTo(0, 0); }
 $('multiplierBack').addEventListener('click', (e) => { e.preventDefault(); closeMultiplier(); });
