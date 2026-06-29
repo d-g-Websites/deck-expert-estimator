@@ -275,7 +275,17 @@ const STAIN_COPY = {
     intro: "Our service includes the application of one coat of oil-based semi-transparent Rymar " +
       "Xtreme Weather Sealer, in a color selected by the customer.",
   },
-  // bm_solid, ipe_oil, customer_oil, customer_acrylic — wording pending.
+  bm_solid: {
+    name: "Application of Stain — Benjamin Moore Solid WoodLuxe",
+    intro: "This service involves applying one coat of Benjamin Moore Solid WoodLuxe stain, in a " +
+      "color selected by the client.",
+    notes: [
+      "Please note that the project is limited to one color selection.",
+      "For white or light colors, an additional coat may be required to achieve the desired result. " +
+      "This additional coat can be provided for an extra charge covering both labor and materials.",
+    ],
+  },
+  // ipe_oil, customer_oil, customer_acrylic — wording pending.
 };
 
 // Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
@@ -319,7 +329,13 @@ export function buildLineItems(record, breakdown) {
     const copy = STAIN_COPY[record.stain_process];
     const procLbl = (STAIN_PROCESSES[record.stain_process] || {}).label || "";
     const name = copy ? copy.name : (procLbl ? `Staining / Sealing — ${procLbl}` : "Staining / Sealing");
-    const desc = copy ? (copy.intro + "\n" + STAIN_CAVEATS) : STAIN_CAVEATS;
+    let desc;
+    if (copy) {
+      const noteLines = (copy.notes || []).map(n => "- " + n).join("\n");
+      desc = [copy.intro, noteLines, STAIN_CAVEATS].filter(Boolean).join("\n");
+    } else {
+      desc = STAIN_CAVEATS;
+    }
     push(name, b.staining.total, { description: desc });
   }
 

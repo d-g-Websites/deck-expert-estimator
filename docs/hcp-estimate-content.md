@@ -198,15 +198,24 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
 >   decking due to differences in age and condition. We strive for a consistent
 >   appearance, but natural variation may occur.
 
+Per-product structure: **intro** + optional **product-specific notes** (bullets)
++ **shared caveats** (bullets).
+
 ### Rymar (`rymar_oil_seal`) — ✅ BUILT
 - **Name:** Application of Sealer — Oil-Based Semi-Transparent Rymar Xtreme Weather Sealer
 - **Intro:** Our service includes the application of one coat of oil-based
   semi-transparent Rymar Xtreme Weather Sealer, in a color selected by the customer.
 
+### Benjamin Moore Solid (`bm_solid`) — ✅ BUILT
+- **Name:** Application of Stain — Benjamin Moore Solid WoodLuxe
+- **Intro:** This service involves applying one coat of Benjamin Moore Solid
+  WoodLuxe stain, in a color selected by the client.
+- **Product notes:** (1) project limited to one color selection; (2) white/light
+  colors may need an extra coat at additional labor+materials cost.
+
 ### Pending wording (user to provide)
-- `bm_solid` (Benjamin Moore Solid), `ipe_oil` (IPE Oil), `customer_oil` /
-  `customer_acrylic` (customer-supplied). Until provided, these fall back to
-  name = process label + shared caveats.
+- `ipe_oil` (IPE Oil), `customer_oil` / `customer_acrylic` (customer-supplied).
+  Until provided, these fall back to name = process label + shared caveats.
 
 ---
 
