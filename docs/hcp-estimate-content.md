@@ -134,7 +134,7 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
 |---|---|
 | `never_finished` | Light Sanding |
 | `oil_before`, `latex_before` | Standard Sanding / Surface Preparation |
-| `stain_removal` | Bare Wood Sanding / Stain Removal |
+| `stain_removal` | Sanding to Bare Wood / Complete Stain Removal |
 
 ### Light Sanding (`never_finished`)
 > A light sanding to smooth out surface imperfections and remove roughness from
@@ -159,7 +159,7 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
 > removal of previous coatings cannot be guaranteed. We provide the most
 > effective solutions available, but absolute removal is not assured.
 
-### Bare Wood Sanding / Stain Removal (`stain_removal`)
+### Sanding to Bare Wood / Complete Stain Removal (`stain_removal`)
 > This service involves an aggressive sanding to remove the existing coating and
 > bring the wood back to a bare surface, creating the ideal foundation for the
 > new finish and maximizing adhesion. We power sand all horizontal surfaces for
