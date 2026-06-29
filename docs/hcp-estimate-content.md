@@ -123,6 +123,62 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
 
 ---
 
+## Section 3 — Sanding / Surface Preparation  *(line item)*  — pending approval
+
+- **Shown only when a sanding condition is selected** (skip if none / no sanding).
+- **Price:** sanding **labor** = `breakdown.sanding.total` (sanding supply is in
+  the Materials section).
+- **Name + description vary by `sanding_condition`:**
+
+| `sanding_condition` | Line name |
+|---|---|
+| `never_finished` | Light Sanding |
+| `oil_before`, `latex_before` | Standard Sanding / Surface Preparation |
+| `stain_removal` | Bare Wood Sanding / Stain Removal |
+
+### Light Sanding (`never_finished`)
+> A light sanding to smooth out surface imperfections and remove roughness from
+> the wood's texture, creating a clean, even base for the final application.
+
+### Standard Sanding / Surface Preparation (`oil_before`, `latex_before`)
+> Our surface preparation includes a complete sanding of the deck in preparation
+> for the final application, ensuring optimal adhesion and a smooth, uniform
+> finish. This includes power sanding of all horizontal surfaces for thorough,
+> consistent results.
+> - Light sanding of accessible vertical surfaces is performed as needed, at the
+>   technician's discretion based on accessibility and the specific requirements
+>   of the project.
+> - Any loose nails, screws, or bolts discovered during the work are tightened
+>   and secured to maintain the stability and safety of the deck surface. This
+>   inspection focuses on critical, accessible areas to uphold structural
+>   integrity and does not cover every piece of hardware on the deck.
+>
+> Note: Please note that this process will not completely remove existing
+> coatings. Alternative methods such as chemical stripping or sanding to bare
+> wood are available upon request; however, even with these methods, complete
+> removal of previous coatings cannot be guaranteed. We provide the most
+> effective solutions available, but absolute removal is not assured.
+
+### Bare Wood Sanding / Stain Removal (`stain_removal`)
+> This service involves an aggressive sanding to remove the existing coating and
+> bring the wood back to a bare surface, creating the ideal foundation for the
+> new finish and maximizing adhesion. We power sand all horizontal surfaces for
+> thorough, consistent results, and lightly sand accessible vertical surfaces as
+> needed, at the technician's discretion based on accessibility and project
+> requirements.
+> - Any loose nails, screws, or bolts discovered during the work are tightened
+>   and secured to maintain the stability and safety of the deck surface. This
+>   inspection focuses on critical, accessible areas and does not cover every
+>   piece of hardware on the deck.
+>
+> Note: Please note that while this process is intended to return the wood to a
+> bare surface, complete removal of all existing coatings cannot be guaranteed.
+> Aged stains, deep penetration, and weathering may leave residual coating or
+> discoloration in some areas. We use the most effective methods available to
+> achieve the best possible result, but absolute removal is not assured.
+
+---
+
 ## Data model implications (running list)
 
 Scope of Work needs:
