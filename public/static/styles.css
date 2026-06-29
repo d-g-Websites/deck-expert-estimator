@@ -23,6 +23,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); marg
 .topbar .back:hover { background: rgba(255,255,255,0.12); }
 .topbar .logout { background: none; border: 1px solid rgba(255,255,255,0.35); color: #fff; padding: 0.4rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 .topbar .logout:hover { background: rgba(255,255,255,0.12); }
+.topbar .navbtn { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.35); color: #fff; padding: 0.4rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.topbar .navbtn:hover { background: rgba(255,255,255,0.2); }
 
 main { max-width: 720px; margin: 0 auto; padding: 1rem; }
 

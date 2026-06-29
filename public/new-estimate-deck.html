@@ -82,6 +82,8 @@
 <div class="topbar">
   <a href="/estimate/new" class="back">← Structures</a>
   <h1>New Deck Estimate</h1>
+  <button type="button" class="navbtn" id="navScope">Scope</button>
+  <button type="button" class="navbtn" id="navRepairs">Repairs</button>
   <form method="POST" action="/logout" style="margin:0"><button type="submit" class="logout">Log out</button></form>
 </div>
 
@@ -232,24 +234,9 @@
     </section>
 
     <section class="card">
-      <h2>Repairs / Replacement</h2>
-      <button type="button" class="btn secondary" id="openRepairs" style="width:100%">→ Go to Repairs Section</button>
-      <div id="repairsSummary" class="notice" style="margin-top:0.6rem;display:none"></div>
-    </section>
-
-    <section class="card">
       <h2>Extra services</h2>
       <div id="extraItems"></div>
       <button type="button" id="addExtra" class="btn secondary">+ Add line item</button>
-    </section>
-
-    <section class="card">
-      <h2>Scope of Work</h2>
-      <label class="sub-label" for="scope_title">Title</label>
-      <input type="text" id="scope_title" placeholder="Deck Refinishing" style="width:100%">
-      <button type="button" class="btn secondary" id="openScope" style="width:100%;margin-top:0.75rem">→ See / Edit Scope Draft</button>
-      <div id="scopePreview" class="hint" style="margin-top:0.6rem;white-space:pre-wrap;max-height:5.5em;overflow:hidden;position:relative"></div>
-      <div class="hint" style="margin-top:0.4rem">First ($0) line on the Housecall Pro estimate. Auto-drafted from the project details — open to review/edit.</div>
     </section>
 
     <section class="card">
@@ -331,6 +318,8 @@
   </div>
   <main>
     <div class="card">
+      <label class="sub-label" for="scope_title">Title</label>
+      <input type="text" id="scope_title" placeholder="Deck Refinishing" style="width:100%;margin-bottom:1rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
         <h2 style="margin:0">Description</h2>
         <button type="button" class="btn secondary" id="regenScope" style="width:auto;padding:0.35rem 0.8rem">Regenerate draft</button>
@@ -837,13 +826,17 @@ function renderRepairsBreakdown() {
 }
 function updateRepairsSummary() {
   const r = computeRepairs();
-  const sum = document.getElementById('repairsSummary');
-  if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair line' + (r.count > 1 ? 's' : '') + ' selected · ' + fmt(r.total); }
-  else { sum.style.display = 'none'; }
+  const sum = document.getElementById('repairsSummary'); // optional (not always present)
+  if (sum) {
+    if (r.count > 0) { sum.style.display = 'block'; sum.textContent = r.count + ' repair line' + (r.count > 1 ? 's' : '') + ' selected · ' + fmt(r.total); }
+    else { sum.style.display = 'none'; }
+  }
+  const nav = document.getElementById('navRepairs');
+  if (nav) nav.textContent = r.count > 0 ? ('Repairs · ' + fmt(r.total)) : 'Repairs';
   renderRepairsBreakdown();
   updateTotal();
 }
-document.getElementById('openRepairs').addEventListener('click', () => { document.getElementById('repairsScreen').style.display = 'block'; window.scrollTo(0, 0); });
+document.getElementById('navRepairs').addEventListener('click', () => { document.getElementById('repairsScreen').style.display = 'block'; window.scrollTo(0, 0); });
 function closeRepairs() { document.getElementById('repairsScreen').style.display = 'none'; updateRepairsSummary(); updateTotal(); window.scrollTo(0, 0); }
 document.getElementById('repairsBack').addEventListener('click', (e) => { e.preventDefault(); closeRepairs(); });
 document.getElementById('repairsDone').addEventListener('click', closeRepairs);
@@ -1179,10 +1172,10 @@ function buildScopeDraft() {
   return [area, resp, excl, addl].join('\n\n');
 }
 function updateScopePreview() {
-  const t = (scopeDescEl.value || '').trim();
-  const prev = $('scopePreview');
-  prev.textContent = t || 'No draft yet — tap “See / Edit Scope Draft” to generate one.';
-  prev.style.opacity = t ? '0.85' : '0.6';
+  const filled = !!(scopeDescEl.value || '').trim();
+  const nav = $('navScope'); if (nav) nav.textContent = filled ? 'Scope ✓' : 'Scope';
+  const prev = $('scopePreview'); // optional inline preview (not always present)
+  if (prev) { prev.textContent = filled ? scopeDescEl.value.trim() : 'No draft yet.'; prev.style.opacity = filled ? '0.85' : '0.6'; }
 }
 $('regenScope').addEventListener('click', () => {
   if (scopeDescEl.value.trim() && !confirm('Replace the description with a fresh draft? Your edits will be lost.')) return;
@@ -1196,7 +1189,7 @@ function openScopeScreen() {
   $('scopeScreen').style.display = 'block'; window.scrollTo(0, 0);
 }
 function closeScopeScreen() { $('scopeScreen').style.display = 'none'; updateScopePreview(); window.scrollTo(0, 0); }
-$('openScope').addEventListener('click', openScopeScreen);
+$('navScope').addEventListener('click', openScopeScreen);
 $('scopeDone').addEventListener('click', closeScopeScreen);
 $('scopeBack').addEventListener('click', (e) => { e.preventDefault(); closeScopeScreen(); });
 updateScopePreview();
