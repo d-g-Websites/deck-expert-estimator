@@ -269,6 +269,11 @@ const STAIN_CAVEATS =
   "- Knots and areas of hard grain may remain lighter or whiter after application.\n" +
   "- New board installations may show color variations relative to the existing decking due to " +
   "differences in age and condition. We strive for a consistent appearance, but natural variation may occur.";
+// Customer-supplied product: legal disclaimer (replaces the standard caveats).
+const CUSTOMER_STAIN_DISCLAIMER =
+  "We do not guarantee the product, how long it will last, or the final look of the deck or the color " +
+  "of the product. We will apply the product following all manufacturer recommendations. All warranty " +
+  "claims should be directed to the manufacturer of the product.";
 const STAIN_COPY = {
   rymar_oil_seal: {
     name: "Application of Sealer — Oil-Based Semi-Transparent Rymar Xtreme Weather Sealer",
@@ -340,17 +345,28 @@ export function buildLineItems(record, breakdown) {
 
   // §4 Staining / Sealing (staining labor; stain product in Materials)
   if (b.staining && b.staining.total > 0) {
-    const copy = STAIN_COPY[record.stain_process];
-    const procLbl = (STAIN_PROCESSES[record.stain_process] || {}).label || "";
-    const name = copy ? copy.name : (procLbl ? `Staining / Sealing — ${procLbl}` : "Staining / Sealing");
-    let desc;
-    if (copy) {
-      const noteLines = (copy.notes || []).map(n => "- " + n).join("\n");
-      desc = [copy.intro, noteLines, STAIN_CAVEATS].filter(Boolean).join("\n");
+    const proc = record.stain_process;
+    if (proc === "customer_oil" || proc === "customer_acrylic") {
+      // Customer-supplied product: name product from the Custom Product Description.
+      const kind = proc === "customer_acrylic" ? "Acrylic" : "Oil-Based";
+      const prod = (record.stain_custom_desc || "").trim();
+      const name = `Application of Customer-Supplied ${kind} Stain / Sealer`;
+      const desc = `Deck staining will be performed using the customer-supplied ${kind.toLowerCase()} ` +
+        `stain/sealer` + (prod ? ` (${prod})` : "") + `.\n\n${CUSTOMER_STAIN_DISCLAIMER}`;
+      push(name, b.staining.total, { description: desc });
     } else {
-      desc = STAIN_CAVEATS;
+      const copy = STAIN_COPY[proc];
+      const procLbl = (STAIN_PROCESSES[proc] || {}).label || "";
+      const name = copy ? copy.name : (procLbl ? `Staining / Sealing — ${procLbl}` : "Staining / Sealing");
+      let desc;
+      if (copy) {
+        const noteLines = (copy.notes || []).map(n => "- " + n).join("\n");
+        desc = [copy.intro, noteLines, STAIN_CAVEATS].filter(Boolean).join("\n");
+      } else {
+        desc = STAIN_CAVEATS;
+      }
+      push(name, b.staining.total, { description: desc });
     }
-    push(name, b.staining.total, { description: desc });
   }
 
   // Repairs / replacement

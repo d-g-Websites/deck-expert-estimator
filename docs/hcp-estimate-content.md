@@ -218,9 +218,17 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 - **Intro:** 3-paragraph Deck-Wise Ipe oil blurb (grammar lightly polished;
   fence/etc. tied to Scope of Work). + shared caveats.
 
-### Pending wording (user to provide)
-- `customer_oil` / `customer_acrylic` (customer-supplied). Until provided, these
-  fall back to name = process label + shared caveats.
+### Customer-supplied (`customer_oil`, `customer_acrylic`) — ✅ BUILT
+- **Name:** Application of Customer-Supplied {Oil-Based|Acrylic} Stain / Sealer
+- **Intro:** "Deck staining will be performed using the customer-supplied
+  {oil-based|acrylic} stain/sealer (<Custom Product Description>)." — the product
+  name comes from `stain_custom_desc` (omitted if blank).
+- **Disclaimer (replaces the shared caveats):** "We do not guarantee the product,
+  how long it will last, or the final look of the deck or the color of the
+  product. We will apply the product following all manufacturer recommendations.
+  All warranty claims should be directed to the manufacturer of the product."
+
+**§4 complete — all five `stain_process` values covered.**
 
 ---
 
