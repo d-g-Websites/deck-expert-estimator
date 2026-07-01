@@ -325,6 +325,15 @@ Scope of Work needs:
 
 ---
 
+## Full "See Draft" preview — ✅ BUILT
+
+- `POST /api/estimate` with `preview=1` returns `{ line_items, breakdown }` using
+  the **same `buildLineItems`** as the real push (no drift), **without saving** and
+  **without requiring customer info**.
+- The **"See Draft"** screen renders every line (name, price, full description) as
+  it will appear in HCP, plus the total. Auto-loads on open; **Refresh** re-runs
+  after edits. Field payload is shared with Save via `buildEstimateFormData()`.
+
 ## Changelog
 - Section 1 (Scope of Work) captured; generation approach + responsibilities
   pattern decided.

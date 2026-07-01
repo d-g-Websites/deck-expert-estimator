@@ -23,6 +23,14 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); marg
 .topbar .back:hover { background: rgba(255,255,255,0.12); }
 .topbar .logout { background: none; border: 1px solid rgba(255,255,255,0.35); color: #fff; padding: 0.4rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 .topbar .logout:hover { background: rgba(255,255,255,0.12); }
+.dp-item { padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
+.dp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.dp-name { font-weight: 700; color: var(--brown); }
+.dp-price { font-weight: 700; white-space: nowrap; }
+.dp-free { color: var(--gray); font-weight: 600; }
+.dp-desc { margin-top: 0.35rem; white-space: pre-wrap; line-height: 1.5; font-size: 0.9rem; color: var(--dark); }
+.dp-grand { border-bottom: none; border-top: 2px solid var(--brown); margin-top: 0.25rem; }
+.dp-grand .dp-name, .dp-grand .dp-price { font-size: 1.15rem; }
 .section-nav { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
 .section-nav-btn { flex: 1 1 28%; min-width: 8rem; padding: 1.1rem 1rem; font-size: 1.1rem; font-weight: 700; color: #fff; background: var(--amber); border: none; border-radius: var(--radius); cursor: pointer; box-shadow: 0 2px 6px rgba(77,46,32,0.18); transition: background 0.15s, transform 0.05s; }
 .section-nav-btn:hover { background: var(--amber-dark); }

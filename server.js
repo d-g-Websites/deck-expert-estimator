@@ -11,7 +11,7 @@ import {
   STAINING_PRICING, STAIN_PROCESSES, TWO_COLOR_SURCHARGE, REPAIR_ITEMS, REPAIR_MATERIALS, LUMBER, computeDeckEstimate,
 } from "./pricing.js";
 import { SWATCHES, listSwatches, renderFinish, visualizerEnabled } from "./render.js";
-import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday, hcpEmployees } from "./hcp.js";
+import { sendEstimateToHcp, hcpEnabled, hcpTest, scheduledToday, hcpEmployees, buildLineItems } from "./hcp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -402,9 +402,9 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     try { structuresIn = b.structures ? JSON.parse(b.structures) : []; } catch (_) { structuresIn = []; }
     const structures = (Array.isArray(structuresIn) ? structuresIn : []).filter(s => DECK_STRUCTURES[s]);
 
-    // Validation
-    if (!customer_name) return res.status(400).json({ error: "Customer name is required" });
-    if (!customer_phone && !customer_email) return res.status(400).json({ error: "Phone or email required" });
+    // Validation (customer identity not required for a draft preview)
+    if (!b.preview && !customer_name) return res.status(400).json({ error: "Customer name is required" });
+    if (!b.preview && !customer_phone && !customer_email) return res.status(400).json({ error: "Phone or email required" });
     if (!WOOD_TYPES[wood_type]) return res.status(400).json({ error: "Invalid wood type" });
     if (deck_location && !DECK_LOCATIONS[deck_location]) return res.status(400).json({ error: "Invalid deck location" });
     if (prior_finish && !PRIOR_FINISHES[prior_finish]) return res.status(400).json({ error: "Invalid prior finish" });
@@ -436,6 +436,12 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       repairs, debris_removal,
       discount, discount_desc, extra_items: cleanExtras,
     });
+
+    // Draft preview: return the exact HCP line items without saving.
+    if (b.preview) {
+      const record = { scope_title, scope_description, sanding_condition, stain_process, stain_custom_desc, repairs_description, warranty_waived };
+      return res.json({ ok: true, line_items: buildLineItems(record, breakdown), breakdown });
+    }
 
     // Edit mode: update the existing estimate in place (photos untouched).
     if (editId) {

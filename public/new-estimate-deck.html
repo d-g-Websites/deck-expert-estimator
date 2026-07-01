@@ -346,6 +346,13 @@ Unless a different warranty is stated in the quote, Contractor warrants its work
       <div class="hint" style="margin:0.5rem 0 0.75rem">This is the first ($0) line on the estimate. Edit freely — add special notes, extra responsibilities/exclusions, or additional deck areas.</div>
       <textarea id="scope_description" rows="22" style="width:100%;font:inherit;line-height:1.5" placeholder="Auto-drafted from the project details — tap “Regenerate draft”, then edit."></textarea>
     </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
+        <h2 style="margin:0">Estimate preview <span style="font-weight:400;color:var(--gray);font-size:0.85rem">(as it will appear in Housecall Pro)</span></h2>
+        <button type="button" class="btn secondary" id="refreshPreview" style="width:auto;padding:0.35rem 0.8rem">Refresh</button>
+      </div>
+      <div id="draftPreviewBody" style="margin-top:0.75rem"><div class="hint">Open to load the preview…</div></div>
+    </div>
     <button type="button" class="btn primary" id="scopeDone">Done — back to estimate</button>
   </main>
 </div>
@@ -1221,9 +1228,35 @@ $('regenScope').addEventListener('click', () => {
   updateScopePreview();
 });
 scopeDescEl.addEventListener('input', updateScopePreview);
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+async function loadDraftPreview() {
+  const body = $('draftPreviewBody');
+  body.innerHTML = '<div class="hint">Building preview…</div>';
+  try {
+    const fd = buildEstimateFormData(); fd.append('preview', '1');
+    const res = await fetch('/api/estimate', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Preview failed');
+    const items = data.line_items || [];
+    if (!items.length) { body.innerHTML = '<div class="hint">Nothing to preview yet — fill in the estimate.</div>'; return; }
+    let html = '';
+    for (const it of items) {
+      const val = (it.unit_price || 0) * (it.quantity || 1);
+      const price = val === 0 ? '<span class="dp-free">$0</span>' : fmt(val / 100);
+      html += '<div class="dp-item"><div class="dp-head"><span class="dp-name">' + esc(it.name) + '</span><span class="dp-price">' + price + '</span></div>' +
+        (it.description ? '<div class="dp-desc">' + esc(it.description) + '</div>' : '') + '</div>';
+    }
+    if (data.breakdown) html += '<div class="dp-item dp-grand"><div class="dp-head"><span class="dp-name">Total</span><span class="dp-price">' + fmt(data.breakdown.total || 0) + '</span></div></div>';
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = '<div class="error" style="display:block">' + esc(e.message) + '</div>';
+  }
+}
+$('refreshPreview').addEventListener('click', loadDraftPreview);
 function openScopeScreen() {
   if (!scopeDescEl.value.trim()) scopeDescEl.value = buildScopeDraft();
   $('scopeScreen').style.display = 'block'; window.scrollTo(0, 0);
+  loadDraftPreview();
 }
 function closeScopeScreen() { $('scopeScreen').style.display = 'none'; updateScopePreview(); window.scrollTo(0, 0); }
 $('navScope').addEventListener('click', openScopeScreen);
@@ -1289,10 +1322,8 @@ renderBtn.addEventListener('click', async () => {
 });
 
 // --- Submit ---
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  errorBanner.style.display = 'none';
-  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+// Gather all estimate fields (no photos) — shared by Save and the draft preview.
+function buildEstimateFormData() {
   const fd = new FormData();
   fd.append('structure_type', 'deck');
   if (sourceHcpEstimateId) fd.append('source_hcp_estimate_id', sourceHcpEstimateId);
@@ -1342,6 +1373,14 @@ form.addEventListener('submit', async (e) => {
   fd.append('scope_description', (scopeDescEl.value.trim() || buildScopeDraft()));
   fd.append('repairs_description', (repairsDescEl.value.trim() || buildRepairsDraft()));
   fd.append('warranty_waived', $('warranty_waived').checked ? '1' : '');
+  return fd;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorBanner.style.display = 'none';
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  const fd = buildEstimateFormData();
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
   for (const p of photos) fd.append('photos', p.file);
   if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }
