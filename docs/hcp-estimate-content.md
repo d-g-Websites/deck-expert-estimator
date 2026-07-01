@@ -264,6 +264,20 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 
 ---
 
+## Section 6 — Materials and Supplies  *(line item)*  — ✅ BUILT
+
+- **Name:** `Materials and Supplies`
+- **Shown when `materials.total > 0`.**
+- **Price:** the full materials total — stain product + cleaning/stain/sanding
+  supplies + **repair materials** (folded in by decision B).
+- **Description:** standard language on every estimate (no itemization):
+  > This section covers all necessary supplies required to complete the project
+  > efficiently, including the cost of stain or sealant as well as any additional
+  > items such as lumber, screws, fasteners, cleaning and prep products, brushes,
+  > and other essential supplies needed for the project.
+
+---
+
 ## Data model implications (running list)
 
 Scope of Work needs:

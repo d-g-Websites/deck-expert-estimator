@@ -320,6 +320,12 @@ const REPAIRS_FOOTER_MORE =
   "additional labor and materials, available at an added charge.";
 const REPAIRS_MATERIALS_NOTE = "The cost of materials is included in the Materials section.";
 
+// §6 Materials & Supplies — standard language on every estimate (price is the total).
+const MATERIALS_DESC =
+  "This section covers all necessary supplies required to complete the project efficiently, including " +
+  "the cost of stain or sealant as well as any additional items such as lumber, screws, fasteners, " +
+  "cleaning and prep products, brushes, and other essential supplies needed for the project.";
+
 // Fallback repairs write-up body when the tech didn't enter one.
 function repairsFallbackBody(breakdown) {
   const items = (breakdown.repairs && breakdown.repairs.items) || [];
@@ -399,10 +405,9 @@ export function buildLineItems(record, breakdown) {
     push("Repair / Replacement", b.repairs.total, { description: desc });
   }
 
-  // Materials & supplies
+  // §6 Materials & Supplies (stain product + supplies + repair materials; standard copy)
   if (b.materials && b.materials.total > 0) {
-    const desc = (b.materials.items || []).map(i => i.label).filter(Boolean).join("; ");
-    push("Materials & supplies", b.materials.total, { description: desc || undefined });
+    push("Materials and Supplies", b.materials.total, { description: MATERIALS_DESC });
   }
 
   // Extra services (one line each)
