@@ -326,22 +326,25 @@ const MATERIALS_DESC =
   "the cost of stain or sealant as well as any additional items such as lumber, screws, fasteners, " +
   "cleaning and prep products, brushes, and other essential supplies needed for the project.";
 
-// Workmanship Warranty (§20) — shown only when the tech marks it as not applicable.
-const WORKMANSHIP_WARRANTY_TEXT =
-  "20. Workmanship Warranty\n\n" +
-  "Unless a different warranty is stated in the quote, Contractor warrants its workmanship for 18 months " +
-  "from completion. This workmanship warranty does not cover normal wear, weathering, fading, color changes, " +
-  "product failure, manufacturer defects, damage caused by moisture, drainage, ice, snow, shoveling, salt, " +
-  "sprinklers, furniture, grills, pets, plants, chemicals, customer maintenance, prior coatings, structural " +
-  "movement, wood deterioration, rot, mildew, mold, algae, tannin bleed, or conditions outside Contractor's " +
-  "control. Warranty service, if approved, is limited to repair of the affected work area and does not include " +
-  "consequential damages.";
-const WARRANTY_WAIVED_DESC =
-  "Please note: the standard Workmanship Warranty does not apply to this project. At the customer's request, " +
-  "this estimate includes work and/or materials that fall outside our warrantable scope; therefore no " +
-  "workmanship warranty is provided for the work described in this estimate. All other Terms & Conditions " +
-  "remain in effect. For reference, the standard warranty that does not apply reads:\n\n" +
-  WORKMANSHIP_WARRANTY_TEXT;
+// Terms and Conditions — standard $0 line, always last on the estimate.
+const TERMS_DESC =
+  "This estimate is valid for 30 days. A 30% deposit is required to approve the estimate, reserve " +
+  "scheduling, and begin project preparation. The remaining balance is due upon substantial completion " +
+  "unless otherwise stated.\n\n" +
+  "This estimate includes only the work listed. Additional work, hidden damage, wood rot, repairs, extra " +
+  "preparation, product changes, or customer-requested changes may result in additional charges.\n\n" +
+  "Scheduling and completion are weather-dependent and may change due to rain, temperature, humidity, wood " +
+  "moisture, material availability, or unsafe/unforeseen conditions.\n\n" +
+  "Customer is responsible for approving the final color/product, providing access, removing personal items " +
+  "from the work area, and securing doors, windows, vents, and other openings before work begins.\n\n" +
+  "By electronically accepting this estimate and/or paying the deposit, Customer agrees to the estimate, " +
+  "payment terms, scope of work, and the Full Terms and Conditions below.";
+// Appended to the T&C line when the tech marks the Workmanship Warranty (§20) as N/A.
+const WARRANTY_WAIVED_APPEND =
+  "Workmanship Warranty Exclusion: This project includes work and/or materials the customer has requested " +
+  "that we cannot guarantee. As a result, Section 20 (Workmanship Warranty) of our Full Terms and Conditions " +
+  "does not apply to this project. By accepting this quote, the customer acknowledges and understands that " +
+  "no workmanship warranty is provided for this work.";
 
 // Fallback repairs write-up body when the tech didn't enter one.
 function repairsFallbackBody(breakdown) {
@@ -438,14 +441,13 @@ export function buildLineItems(record, breakdown) {
     items.push({ name, unit_price: -cents(b.discount), quantity: 1, kind: "discount", taxable: false });
   }
 
-  // Workmanship Warranty waived ($0 note) — only when the tech marked §20 N/A.
-  if (record.warranty_waived) {
-    items.push({
-      name: "Workmanship Warranty — Not Applicable",
-      description: WARRANTY_WAIVED_DESC,
-      unit_price: 0, quantity: 1, kind: "labor", taxable: false,
-    });
-  }
+  // Terms and Conditions — always the last line ($0). Warranty exclusion appended when waived.
+  const termsDesc = record.warranty_waived ? (TERMS_DESC + "\n\n" + WARRANTY_WAIVED_APPEND) : TERMS_DESC;
+  items.push({
+    name: "Terms and Conditions",
+    description: termsDesc,
+    unit_price: 0, quantity: 1, kind: "labor", taxable: false,
+  });
 
   return items;
 }

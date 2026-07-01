@@ -278,18 +278,24 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 
 ---
 
-## Terms & Conditions / Workmanship Warranty  — ✅ BUILT
+## Section 7 — Terms and Conditions  *(line item, $0, always last)*  — ✅ BUILT
 
-- Full T&C live **externally** (linked from the HCP estimate) — not reproduced here.
-- **Draft view** (top, before Title): a checkbox **"Workmanship Warranty (§20)
-  does NOT apply"** (`warranty_waived`) with the §20 text in a collapsible for
-  reference. For when the customer requests non-warrantable work.
-- **When checked:** a **$0 line "Workmanship Warranty — Not Applicable"** is added
-  at the end of the HCP estimate, stating the standard 18-month warranty does not
-  apply (all other T&C remain), and quoting the §20 text for reference. Also shown
-  as a red notice on the estimate view.
-- **When unchecked (default):** nothing added (standard warranty applies via the
-  linked T&C).
+- **Name:** `Terms and Conditions`. **Always** the **last** line on every estimate, $0.
+- Full T&C live **externally** (linked from the HCP estimate); this line is the
+  standard short terms block:
+  > This estimate is valid for 30 days. A 30% deposit is required to approve the
+  > estimate, reserve scheduling, and begin project preparation. The remaining
+  > balance is due upon substantial completion unless otherwise stated. …
+  > (payment / scope / weather / customer-responsibility / acceptance paragraphs)
+
+### Workmanship Warranty (§20) waiver — folds into this line
+- **Draft view** (top, before Title): checkbox **"Workmanship Warranty (§20) does
+  NOT apply"** (`warranty_waived`) + §20 text in a collapsible for tech reference.
+- **When checked:** a **Workmanship Warranty Exclusion** paragraph is **appended to
+  the Terms and Conditions line** (not a separate line): the project includes
+  customer-requested non-warrantable work, so §20 does not apply and no workmanship
+  warranty is provided. Also shown as a red notice on the estimate view.
+- **When unchecked (default):** standard T&C only; warranty applies via linked T&C.
 
 ---
 
