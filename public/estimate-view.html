@@ -69,6 +69,9 @@ function render(e) {
     ? card('Scope of Work' + (pr.scope_title ? ': ' + pr.scope_title : ''),
         '<div style="white-space:pre-wrap;line-height:1.5">' + esc(pr.scope_description) + '</div>')
     : '';
+  const warrantyCard = pr.warranty_waived
+    ? '<section class="card" style="border-color:#c0392b"><h2 style="color:#c0392b">Workmanship Warranty — Not Applicable</h2><div class="hint">The standard 18-month workmanship warranty (§20) does not apply to this estimate (customer-requested non-warrantable work). All other Terms &amp; Conditions remain in effect.</div></section>'
+    : '';
   const structuresStr = (e.labels.structures && e.labels.structures.length)
     ? e.labels.structures.join(', ') + (pr.structures_other ? ' (' + pr.structures_other + ')' : '')
     : '—';
@@ -153,7 +156,7 @@ function render(e) {
   }
   const actions = '<div class="actions">' + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
 
-  content.innerHTML = customer + scopeCard + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
+  content.innerHTML = customer + scopeCard + warrantyCard + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
 
   content.querySelectorAll('.photo-tile').forEach(t => t.addEventListener('click', () => openLightbox(t.dataset.url)));
   content.querySelectorAll('img[data-zoom]').forEach(img => img.addEventListener('click', () => openLightbox(img.src)));

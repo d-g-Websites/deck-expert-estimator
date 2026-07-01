@@ -327,6 +327,15 @@
     <h1>Estimate Draft</h1>
   </div>
   <main>
+    <div class="card" style="border-color:var(--amber)">
+      <label class="check-line" style="font-weight:700"><input type="checkbox" id="warranty_waived"> Workmanship Warranty (§20) does NOT apply</label>
+      <div class="hint" style="margin-top:0.4rem">Check when the customer requests work or materials we can't guarantee. A note will appear on the estimate marking the standard 18-month workmanship warranty as not applicable. All other Terms &amp; Conditions still apply.</div>
+      <details style="margin-top:0.5rem"><summary style="cursor:pointer;color:var(--amber);font-weight:600">View Section 20 text</summary>
+        <div class="hint" style="margin-top:0.5rem;white-space:pre-wrap">20. Workmanship Warranty
+
+Unless a different warranty is stated in the quote, Contractor warrants its workmanship for 18 months from completion. This workmanship warranty does not cover normal wear, weathering, fading, color changes, product failure, manufacturer defects, damage caused by moisture, drainage, ice, snow, shoveling, salt, sprinklers, furniture, grills, pets, plants, chemicals, customer maintenance, prior coatings, structural movement, wood deterioration, rot, mildew, mold, algae, tannin bleed, or conditions outside Contractor’s control. Warranty service, if approved, is limited to repair of the affected work area and does not include consequential damages.</div>
+      </details>
+    </div>
     <div class="card">
       <label class="sub-label" for="scope_title">Title</label>
       <input type="text" id="scope_title" placeholder="Deck Refinishing" style="width:100%;margin-bottom:1rem">
@@ -1332,6 +1341,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('scope_title', scopeTitleEl.value.trim());
   fd.append('scope_description', (scopeDescEl.value.trim() || buildScopeDraft()));
   fd.append('repairs_description', (repairsDescEl.value.trim() || buildRepairsDraft()));
+  fd.append('warranty_waived', $('warranty_waived').checked ? '1' : '');
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
   for (const p of photos) fd.append('photos', p.file);
   if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }
@@ -1403,6 +1413,7 @@ async function loadForEdit(id) {
   setVal(scopeTitleEl, p.scope_title);
   setVal(scopeDescEl, p.scope_description);
   setVal(repairsDescEl, p.repairs_description);
+  if ($('warranty_waived')) $('warranty_waived').checked = !!p.warranty_waived;
   updateScopePreview();
   (x.extra_items || []).forEach(it => addExtraRow(it.description, it.price));
   applyRepairsEdit(x.repairs || []);

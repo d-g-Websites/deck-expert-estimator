@@ -278,6 +278,21 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 
 ---
 
+## Terms & Conditions / Workmanship Warranty  — ✅ BUILT
+
+- Full T&C live **externally** (linked from the HCP estimate) — not reproduced here.
+- **Draft view** (top, before Title): a checkbox **"Workmanship Warranty (§20)
+  does NOT apply"** (`warranty_waived`) with the §20 text in a collapsible for
+  reference. For when the customer requests non-warrantable work.
+- **When checked:** a **$0 line "Workmanship Warranty — Not Applicable"** is added
+  at the end of the HCP estimate, stating the standard 18-month warranty does not
+  apply (all other T&C remain), and quoting the §20 text for reference. Also shown
+  as a red notice on the estimate view.
+- **When unchecked (default):** nothing added (standard warranty applies via the
+  linked T&C).
+
+---
+
 ## Data model implications (running list)
 
 Scope of Work needs:

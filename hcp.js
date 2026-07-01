@@ -326,6 +326,23 @@ const MATERIALS_DESC =
   "the cost of stain or sealant as well as any additional items such as lumber, screws, fasteners, " +
   "cleaning and prep products, brushes, and other essential supplies needed for the project.";
 
+// Workmanship Warranty (§20) — shown only when the tech marks it as not applicable.
+const WORKMANSHIP_WARRANTY_TEXT =
+  "20. Workmanship Warranty\n\n" +
+  "Unless a different warranty is stated in the quote, Contractor warrants its workmanship for 18 months " +
+  "from completion. This workmanship warranty does not cover normal wear, weathering, fading, color changes, " +
+  "product failure, manufacturer defects, damage caused by moisture, drainage, ice, snow, shoveling, salt, " +
+  "sprinklers, furniture, grills, pets, plants, chemicals, customer maintenance, prior coatings, structural " +
+  "movement, wood deterioration, rot, mildew, mold, algae, tannin bleed, or conditions outside Contractor's " +
+  "control. Warranty service, if approved, is limited to repair of the affected work area and does not include " +
+  "consequential damages.";
+const WARRANTY_WAIVED_DESC =
+  "Please note: the standard Workmanship Warranty does not apply to this project. At the customer's request, " +
+  "this estimate includes work and/or materials that fall outside our warrantable scope; therefore no " +
+  "workmanship warranty is provided for the work described in this estimate. All other Terms & Conditions " +
+  "remain in effect. For reference, the standard warranty that does not apply reads:\n\n" +
+  WORKMANSHIP_WARRANTY_TEXT;
+
 // Fallback repairs write-up body when the tech didn't enter one.
 function repairsFallbackBody(breakdown) {
   const items = (breakdown.repairs && breakdown.repairs.items) || [];
@@ -419,6 +436,15 @@ export function buildLineItems(record, breakdown) {
   if (b.discount > 0) {
     const name = b.discount_label ? `Discount — ${b.discount_label}` : "Discount";
     items.push({ name, unit_price: -cents(b.discount), quantity: 1, kind: "discount", taxable: false });
+  }
+
+  // Workmanship Warranty waived ($0 note) — only when the tech marked §20 N/A.
+  if (record.warranty_waived) {
+    items.push({
+      name: "Workmanship Warranty — Not Applicable",
+      description: WARRANTY_WAIVED_DESC,
+      unit_price: 0, quantity: 1, kind: "labor", taxable: false,
+    });
   }
 
   return items;
