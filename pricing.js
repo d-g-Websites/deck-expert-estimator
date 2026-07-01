@@ -568,8 +568,25 @@ export function computeRepairs(repairs, debris = 0, location = "above_ground") {
     }
   }
   const debris_removal = Math.max(0, Number(debris) || 0);
-  const total = round2(items.reduce((s, x) => s + x.cost, 0) + debris_removal);
-  return { items, debris_removal, total };
+  // Split each item into materials vs labor (repair materials move to the
+  // Materials section; the Repairs line carries labor + debris only).
+  let matSum = 0, labSum = 0;
+  for (const it of items) {
+    const q = it.qty || 0;
+    if (it.material_price != null || it.labor_rate != null) {
+      matSum += (it.material_price || 0) * q;
+      labSum += (it.labor_rate || 0) * q;
+    } else if (it.labor_total != null || it.supplies_total != null) {
+      matSum += (it.supplies_total || 0);
+      labSum += (it.labor_total || 0);
+    } else {
+      labSum += (it.cost || 0); // combined-price items (e.g. options) → labor
+    }
+  }
+  const materials = round2(matSum);
+  const labor = round2(labSum);
+  const total = round2(labor + debris_removal); // Repairs line = labor + debris
+  return { items, debris_removal, materials, labor, total };
 }
 
 // Build the full deck estimate breakdown (frozen into pricing_snapshot at save).
@@ -579,6 +596,11 @@ export function computeDeckEstimate(input) {
   const staining = computeStaining(input);
   const repairs = computeRepairs(input.repairs, input.debris_removal, input.deck_location);
   const materials = computeMaterials(input);
+  // Repair materials are billed in the Materials section (repairs line = labor + debris).
+  if (repairs.materials > 0) {
+    materials.items.push({ id: "repair_materials", label: "Repair / replacement materials", cost: repairs.materials });
+    materials.total = round2(materials.total + repairs.materials);
+  }
   const discount = Number(input.discount) || 0;
 
   const extras = Array.isArray(input.extra_items) ? input.extra_items : [];

@@ -709,7 +709,7 @@ function getRepairs() {
   return out;
 }
 function computeRepairs() {
-  let count = 0, total = 0;
+  let count = 0, mat = 0, lab = 0;
   const rooftop = els.location.value === 'rooftop';
   for (const r of getRepairs()) {
     const def = REPAIRS && REPAIRS[r.item_id];
@@ -718,11 +718,9 @@ function computeRepairs() {
     if (mode === 'other') {
       for (const ln of r.lines) {
         count++;
-        const lab = (Number(ln.unit_labor) || 0) * ln.qty;
-        let mat;
-        if (ln.material === 'other') { mat = (Number(ln.unit_material) || 0) * ln.qty; }
-        else { const cat = LUMBER && LUMBER[ln.material]; const b = cat && cat.items[ln.board]; mat = (b ? b.price : 0) * ln.qty; }
-        total += mat + lab;
+        lab += (Number(ln.unit_labor) || 0) * ln.qty;
+        if (ln.material === 'other') { mat += (Number(ln.unit_material) || 0) * ln.qty; }
+        else { const cat = LUMBER && LUMBER[ln.material]; const b = cat && cat.items[ln.board]; mat += (b ? b.price : 0) * ln.qty; }
       }
       continue;
     }
@@ -730,9 +728,10 @@ function computeRepairs() {
       count++;
       if (mode === 'options') {
         const o = def.options && def.options[ln.option];
-        if (o) total += o.price * ln.qty;
+        if (o) lab += o.price * ln.qty; // combined price → labor
       } else if (mode === 'qty') {
-        total += footerLabor(def.graduated, ln.qty) + (def.supplies_per_unit || 0) * ln.qty;
+        lab += footerLabor(def.graduated, ln.qty);
+        mat += (def.supplies_per_unit || 0) * ln.qty;
       } else {
         const cat = LUMBER && LUMBER[ln.material];
         const board = cat && cat.items[ln.board];
@@ -744,13 +743,15 @@ function computeRepairs() {
           const laborDef = (def && def.toggle && r.toggled) ? def.toggle.labor : (def && def.labor);
           laborRate = laborDef ? (rooftop ? laborDef.rooftop : laborDef.ground) : 0;
         }
-        total += (matPrice + laborRate) * ln.qty;
+        mat += matPrice * ln.qty;
+        lab += laborRate * ln.qty;
       }
     }
   }
   const debris = parseFloat($('debris_removal').value) || 0;
-  if (debris > 0) total += debris;
-  return { total: Math.round(total * 100) / 100, count, debris };
+  const r2 = (n) => Math.round(n * 100) / 100;
+  // Repairs line = labor + debris; materials billed in the Materials section.
+  return { total: r2(lab + debris), count, debris, materials: r2(mat), labor: r2(lab) };
 }
 // Per-line breakdown (material vs labor) for the bottom-of-screen summary.
 function repairsBreakdown() {
@@ -820,10 +821,10 @@ function renderRepairsBreakdown() {
       '<div class="rb-detail">No charge — noted in estimate</div></div>';
   }
   html += '<div class="rb-totals">' +
-    '<div class="rb-trow"><span>Materials</span><span>' + fmt(b.materials) + '</span></div>' +
+    '<div class="rb-trow"><span>Materials <em style="font-style:normal;opacity:0.6">(billed in Materials section)</em></span><span>' + fmt(b.materials) + '</span></div>' +
     '<div class="rb-trow"><span>Labor</span><span>' + fmt(b.labor) + '</span></div>' +
     (b.debris > 0 ? '<div class="rb-trow"><span>Debris removal</span><span>' + fmt(b.debris) + '</span></div>' : '') +
-    '<div class="rb-trow grand"><span>Repairs total</span><span>' + fmt(b.total) + '</span></div></div>';
+    '<div class="rb-trow grand"><span>Repairs line (labor + debris)</span><span>' + fmt(b.labor + b.debris) + '</span></div></div>';
   document.getElementById('repairsBreakdownBody').innerHTML = html;
 }
 function updateRepairsSummary() {
@@ -1059,9 +1060,10 @@ function updateTotal() {
   const st = computeStaining();
   const rp = computeRepairs();
   const m = computeMaterials();
+  const materialsTotal = Math.round(((m.total || 0) + (rp.materials || 0)) * 100) / 100; // repair materials billed here
   const extras = getExtras().reduce((acc, x) => acc + x.price, 0);
   const discount = num(els.discount);
-  const subtotal = c.total + s.total + st.total + rp.total + m.total + extras;
+  const subtotal = c.total + s.total + st.total + rp.total + materialsTotal + extras;
   const grand = Math.max(0, subtotal - discount);
 
   document.getElementById('sandingWoodNote').style.display = noHorizSanding() ? 'block' : 'none';
@@ -1074,7 +1076,7 @@ function updateTotal() {
   document.getElementById('stainingLabel').textContent = 'Staining' + ((PROCESSES && PROCESSES[els.stainProcess.value]) ? ' (' + PROCESSES[els.stainProcess.value].label + ')' : '');
   sr('stainingRow', 'stainingTotal', st.total);
   sr('repairsRow', 'repairsRowTotal', rp.total);
-  sr('materialsRow', 'materialsTotal', m.total);
+  sr('materialsRow', 'materialsTotal', materialsTotal);
   sr('extrasRow', 'extrasTotal', extras);
   document.getElementById('subtotal').textContent = fmt(subtotal);
   document.getElementById('discountRow').style.display = discount > 0 ? 'flex' : 'none';
