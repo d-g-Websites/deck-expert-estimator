@@ -307,6 +307,28 @@ const STAIN_COPY = {
   // customer_oil, customer_acrylic — wording pending.
 };
 
+// §5 Repair / Replacement — standard footers (always appended to the write-up).
+const REPAIRS_FOOTER_HARDWARE =
+  "*As part of our service, all discovered loose nails, screws, and bolts will be tightened and " +
+  "secured (as reasonably possible) to help ensure the stability and safety of the immediate deck " +
+  "surface. Please note that this inspection does not cover all hardware on the deck; it focuses on " +
+  "critical, accessible areas to uphold structural integrity.";
+const REPAIRS_FOOTER_MORE =
+  "**Given the current condition of the deck and the number of repairs, it is likely that additional " +
+  "repairs will be discovered during the removal process. All discovered repairs will be brought to " +
+  "the client's attention before any extra work begins. Any additional carpentry will require " +
+  "additional labor and materials, available at an added charge.";
+const REPAIRS_MATERIALS_NOTE = "The cost of materials is included in the Materials section.";
+
+// Fallback repairs write-up body when the tech didn't enter one.
+function repairsFallbackBody(breakdown) {
+  const items = (breakdown.repairs && breakdown.repairs.items) || [];
+  const lines = items
+    .filter(i => (Number(i.cost) || 0) > 0 || i.flagged)
+    .map(i => "- " + (i.item_label || i.item_id) + (i.qty > 1 ? ` (Qty ${i.qty})` : ""));
+  return lines.length ? "Scope of Repair/Replacement:\n" + lines.join("\n") : "";
+}
+
 // Build HCP line items (prices in cents) from our computed breakdown. Mirrors the
 // sections shown on the estimate view so the HCP estimate total matches the app:
 // Cleaning, Sanding, Staining, Repairs, Materials, Extras, then a Discount line.
@@ -369,12 +391,12 @@ export function buildLineItems(record, breakdown) {
     }
   }
 
-  // Repairs / replacement
+  // §5 Repair / Replacement (labor + debris; materials shown in Materials section)
   if (b.repairs && b.repairs.total > 0) {
-    const lines = (b.repairs.items || [])
-      .filter(i => (Number(i.cost) || 0) > 0)
-      .map(i => (i.qty > 1 ? `${i.qty}× ` : "") + (i.item_label || i.item_id));
-    push("Repairs / replacement", b.repairs.total, { description: lines.join("; ") || undefined });
+    const body = (record.repairs_description || "").trim() || repairsFallbackBody(b);
+    const desc = [body, REPAIRS_FOOTER_HARDWARE, REPAIRS_FOOTER_MORE, REPAIRS_MATERIALS_NOTE]
+      .filter(Boolean).join("\n\n");
+    push("Repair / Replacement", b.repairs.total, { description: desc });
   }
 
   // Materials & supplies

@@ -232,6 +232,38 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 
 ---
 
+## Section 5 — Repair / Replacement  *(line item)*  — ✅ BUILT
+
+- **Name:** `Repair / Replacement`
+- **Shown only when there are repairs** (`repairs.total > 0`, i.e. labor + debris).
+- **Price:** repairs **labor + debris**. Repair **materials are billed in the
+  Materials section** (decision **B** — pricing split). Grand total unchanged.
+- **Description = tech-editable write-up body + standard footers (auto-added):**
+  1. Body: auto-drafted `Scope of Repair/Replacement:` + a bullet per repair, into
+     an **editable textarea** in the Repairs screen (`repairs_description`). Tech
+     expands for larger jobs (staircase narrative, per-area grouping, etc.).
+  2. Footer `*` — loose nails/hardware note (improved wording).
+  3. Footer `**` — "more repairs likely discovered" note (improved wording).
+  4. `The cost of materials is included in the Materials section.`
+- Fallback: if the tech leaves the write-up blank, the body is generated
+  server-side from the repair items.
+- Per-area grouping rides on the Multiple-areas feature (deferred).
+
+### Improved footers (verbatim)
+> *As part of our service, all discovered loose nails, screws, and bolts will be
+> tightened and secured (as reasonably possible) to help ensure the stability and
+> safety of the immediate deck surface. Please note that this inspection does not
+> cover all hardware on the deck; it focuses on critical, accessible areas to
+> uphold structural integrity.
+
+> **Given the current condition of the deck and the number of repairs, it is
+> likely that additional repairs will be discovered during the removal process.
+> All discovered repairs will be brought to the client's attention before any
+> extra work begins. Any additional carpentry will require additional labor and
+> materials, available at an added charge.
+
+---
+
 ## Data model implications (running list)
 
 Scope of Work needs:

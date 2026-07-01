@@ -309,6 +309,14 @@
       <h2>Repairs breakdown</h2>
       <div id="repairsBreakdownBody"></div>
     </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
+        <h2 style="margin:0">Repair write-up (for the estimate)</h2>
+        <button type="button" class="btn secondary" id="regenRepairs" style="width:auto;padding:0.35rem 0.8rem">Regenerate draft</button>
+      </div>
+      <div class="hint" style="margin:0.5rem 0 0.75rem">Auto-drafted from the repairs above. Edit freely — add detail or narrative for larger jobs. Standard disclaimers and the materials note are added automatically on the estimate.</div>
+      <textarea id="repairs_description" rows="12" style="width:100%;font:inherit;line-height:1.5" placeholder="Tap “Regenerate draft” to build from the repairs above, then edit."></textarea>
+    </div>
     <button type="button" class="btn primary" id="repairsDone">Done — back to estimate</button>
   </main>
 </div>
@@ -844,6 +852,22 @@ function closeRepairs() { document.getElementById('repairsScreen').style.display
 document.getElementById('repairsBack').addEventListener('click', (e) => { e.preventDefault(); closeRepairs(); });
 document.getElementById('repairsDone').addEventListener('click', closeRepairs);
 document.getElementById('debris_removal').addEventListener('input', updateRepairsSummary);
+
+// --- Repairs write-up draft (HCP estimate §5 body; footers auto-added server-side) ---
+const repairsDescEl = $('repairs_description');
+function buildRepairsDraft() {
+  const b = repairsBreakdown();
+  const lines = [];
+  for (const ln of b.lines) lines.push('- ' + ln.label + (ln.qty > 1 ? ' (Qty ' + ln.qty + ')' : ''));
+  for (const f of b.flags) lines.push('- ' + f);
+  return lines.length ? 'Scope of Repair/Replacement:\n' + lines.join('\n') : '';
+}
+$('regenRepairs').addEventListener('click', () => {
+  if (repairsDescEl.value.trim() && !confirm('Replace the write-up with a fresh draft? Your edits will be lost.')) return;
+  repairsDescEl.value = buildRepairsDraft();
+});
+repairsDescEl.addEventListener('focus', () => { if (!repairsDescEl.value.trim()) repairsDescEl.value = buildRepairsDraft(); });
+
 function fillStainProcesses(obj) {
   els.stainProcess.innerHTML = '';
   for (const [id, info] of Object.entries(obj)) {
@@ -1307,6 +1331,7 @@ form.addEventListener('submit', async (e) => {
   fd.append('discount_desc', $('discount_desc').value.trim());
   fd.append('scope_title', scopeTitleEl.value.trim());
   fd.append('scope_description', (scopeDescEl.value.trim() || buildScopeDraft()));
+  fd.append('repairs_description', (repairsDescEl.value.trim() || buildRepairsDraft()));
   fd.append('design_photo_index', String(photos.findIndex(p => p.isDesign)));
   for (const p of photos) fd.append('photos', p.file);
   if (renderedBlob && renderedSwatchId) { fd.append('rendered_image', renderedBlob, 'render.png'); fd.append('swatch_id', renderedSwatchId); }
@@ -1377,6 +1402,7 @@ async function loadForEdit(id) {
   setVal($('repairs_notes'), p.repairs_notes);
   setVal(scopeTitleEl, p.scope_title);
   setVal(scopeDescEl, p.scope_description);
+  setVal(repairsDescEl, p.repairs_description);
   updateScopePreview();
   (x.extra_items || []).forEach(it => addExtraRow(it.description, it.price));
   applyRepairsEdit(x.repairs || []);
