@@ -455,88 +455,110 @@ export function buildLineItems(record, breakdown) {
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 function label(s) { return (s || "").replace(/_/g, " "); }
 
-// Resolve the customer's first address id (HCP ties an estimate to an address).
-async function firstAddressId(customerId) {
-  try {
-    const cust = await hcpRequest(`/customers/${customerId}`);
-    const addrs = (cust && Array.isArray(cust.addresses)) ? cust.addresses
-      : (cust && cust.customer && Array.isArray(cust.customer.addresses)) ? cust.customer.addresses : [];
-    return addrs.length ? pickId(addrs[0], "id", "uuid") : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-// Walk-up estimates are scheduled for "today" with a default arrival window.
-function todayScheduleUTC(windowMinutes = 120) {
+// Today's schedule window (now → +1h) as UTC ISO, for the option schedule call.
+function todayWindow() {
   const start = new Date();
-  const end = new Date(start.getTime() + windowMinutes * 60 * 1000);
-  return { scheduled_start: start.toISOString(), scheduled_end: end.toISOString(), arrival_window: windowMinutes };
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
-// Human-readable note summarizing the app estimate (shown on the HCP estimate).
-function buildNote(record, breakdown) {
-  const structLbl = (STRUCTURE_TYPES[record.structure_type] || {}).label || cap(record.structure_type);
-  const woodLbl = (WOOD_TYPES[record.wood_type] || {}).label || label(record.wood_type);
-  return [
-    `Deck Expert Estimator #${record.id} — ${structLbl}${woodLbl ? `, ${woodLbl}` : ""}.`,
-    record.repairs_notes ? `Repair notes: ${record.repairs_notes}` : null,
-    breakdown && breakdown.total != null ? `App total: $${Number(breakdown.total).toFixed(2)}.` : null,
-  ].filter(Boolean).join(" ");
-}
-
-// Create an estimate in HCP for a customer. HCP estimates are multi-option, so
-// line items live under an option (options[].line_items), set inline at creation
-// (HCP has no API to edit an estimate's line items after the fact).
-// opts.employeeId assigns the tech; opts.schedule (default true) puts it on today.
-// Returns the estimate id.
-export async function createEstimate(customerId, addressId, record, breakdown, opts = {}) {
-  const note = buildNote(record, breakdown);
-  const base = {
-    customer_id: customerId,
-    options: [{
-      name: "Option #1",
-      message_from_pro: note,
-      line_items: buildLineItems(record, breakdown),
-    }],
-    note,
-  };
-  if (addressId) base.address_id = addressId;
-
-  // Scheduling + tech assignment are inferred fields; if HCP rejects them, retry
-  // without so the estimate + line items still get created (we log what was dropped).
-  const full = { ...base };
-  if (opts.employeeId) full.assigned_employee_ids = [opts.employeeId];
-  if (opts.schedule !== false) full.schedule = todayScheduleUTC(opts.windowMinutes || 120);
-
-  let created;
-  try {
-    created = await hcpRequest("/estimates", { method: "POST", body: full });
-  } catch (e) {
-    if (e.status >= 400 && e.status < 500 && (full.schedule || full.assigned_employee_ids)) {
-      console.warn("[hcp] create with schedule/assignment failed; retrying without —", e.status, e.message);
-      created = await hcpRequest("/estimates", { method: "POST", body: base });
-    } else {
-      throw e;
-    }
+// Earliest existing schedule across an estimate's options (keeps a synced
+// appointment on its booked slot when we append our option).
+function existingSchedule(est) {
+  const opts = Array.isArray(est && est.options) ? est.options : [];
+  let start = null, end = null;
+  for (const o of opts) {
+    const s = o && o.schedule && o.schedule.scheduled_start;
+    if (s && (!start || s < start)) { start = s; end = (o.schedule && o.schedule.scheduled_end) || null; }
   }
+  if (!start) return null;
+  if (!end) end = new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString();
+  return { start, end };
+}
+
+function optionBaseName(record) {
+  return (record.scope_title || "").toString().trim() || "Deck Expert Estimate";
+}
+
+// Fetch an estimate by id (append path); null if it no longer exists in HCP.
+async function getEstimate(estimateId) {
+  try { return await hcpRequest(`/estimates/${estimateId}`); }
+  catch (e) { if (e.status === 404) return null; throw e; }
+}
+
+// Add a new option (with our line items) to an existing estimate.
+async function appendOptionToEstimate(estimateId, optionName, lineItems) {
+  const endpoint = `/estimates/${estimateId}/options`;
+  const base = { name: optionName, line_items: lineItems };
+  try {
+    return await hcpRequest(endpoint, { method: "POST", body: { ...base, position: 0 } });
+  } catch (_) {
+    return await hcpRequest(endpoint, { method: "POST", body: base });
+  }
+}
+
+// Schedule an estimate option (a separate call from creation).
+async function setOptionSchedule(estimateId, optionId, startIso, endIso, employeeId) {
+  const body = { start_time: startIso, end_time: endIso, arrival_window: 0 };
+  if (employeeId) body.dispatched_employees_ids = [employeeId];
+  return hcpRequest(`/estimates/${estimateId}/options/${optionId}/schedule`, { method: "PUT", body });
+}
+
+// Create a new estimate with our line items as its first option. employee_id
+// (singular, top-level) assigns the tech. Returns { id, optionId }.
+async function createEstimate(customerId, record, breakdown, opts = {}) {
+  const body = {
+    customer_id: customerId,
+    options: [{ name: optionBaseName(record), line_items: buildLineItems(record, breakdown) }],
+  };
+  if (opts.employeeId) body.employee_id = opts.employeeId;
+  const created = await hcpRequest("/estimates", { method: "POST", body });
   const id = pickId(created, "id", "uuid") || pickId(created?.estimate || {}, "id", "uuid");
   if (!id) throw new Error("HCP estimate created but no id was returned");
-  return id;
+  let optionId = created.options && created.options[0] && pickId(created.options[0], "id", "uuid");
+  if (!optionId) {
+    try { const fresh = await getEstimate(id); optionId = fresh && fresh.options && fresh.options[0] && pickId(fresh.options[0], "id", "uuid"); } catch (_) {}
+  }
+  return { id, optionId };
 }
 
-// Orchestrates the full push. HCP's API only lets us set estimate line items at
-// creation time (there's no endpoint to edit them afterward), so every push
-// creates a new estimate with the line items inline, scheduled today + assigned.
+// Orchestrates the full push. Prefilled from a synced HCP estimate → append our
+// quote as a new option on THAT estimate (stays on the booking, keeps its slot).
+// Otherwise → create a new estimate. Either way, schedule the option + assign tech.
 export async function sendEstimateToHcp(record, breakdown, opts = {}) {
   const employeeId = opts.employeeId || null;
+  const sourceId = (record.source_hcp_estimate_id || "").toString().trim() || null;
+  const lineItems = buildLineItems(record, breakdown);
+  const dateStamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+
+  // Append path: put our option on the existing (synced) estimate.
+  if (sourceId) {
+    const est = await getEstimate(sourceId).catch(() => null);
+    if (est) {
+      const customerId = pickId(est.customer || {}, "id", "uuid") || null;
+      const opt = await appendOptionToEstimate(sourceId, `${optionBaseName(record)} — ${dateStamp}`, lineItems);
+      const optionId = pickId(opt, "id", "uuid") || pickId(opt.option || {}, "id", "uuid");
+      if (!optionId) throw new Error("HCP append option returned no id");
+      const sched = existingSchedule(est) || todayWindow();
+      try { await setOptionSchedule(sourceId, optionId, sched.start, sched.end, employeeId); }
+      catch (e) { console.warn("[hcp] option schedule failed:", e.message); }
+      return { customerId, estimateId: sourceId, optionId, mode: "appended" };
+    }
+    // Source gone → fall through to create new.
+  }
+
+  // Create path: new estimate + schedule its option for today.
   const customerId = await upsertCustomer({
     name: record.customer_name,
     email: record.customer_email,
     phone: record.customer_phone,
     address: record.customer_address,
   });
-  const addressId = await firstAddressId(customerId);
-  const estimateId = await createEstimate(customerId, addressId, record, breakdown, { employeeId });
-  return { customerId, estimateId, mode: "created" };
+  const { id: estimateId, optionId } = await createEstimate(customerId, record, breakdown, { employeeId });
+  if (optionId) {
+    const w = todayWindow();
+    try { await setOptionSchedule(estimateId, optionId, w.start, w.end, employeeId); }
+    catch (e) { console.warn("[hcp] option schedule failed:", e.message); }
+  }
+  return { customerId, estimateId, optionId, mode: "created" };
 }
