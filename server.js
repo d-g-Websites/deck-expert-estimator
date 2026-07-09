@@ -451,7 +451,12 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
 
     // Draft preview: return the exact HCP line items without saving.
     if (b.preview) {
-      const record = { scope_title, scope_description, sanding_condition, stain_process, stain_color, stain_custom_desc, repairs_description, warranty_waived, stain_underside };
+      let multi_area = false;
+      if (area_group_id) {
+        const cnt = db.prepare("SELECT COUNT(*) AS c FROM estimates WHERE area_group_id = ?").get(area_group_id).c;
+        multi_area = cnt > 1;
+      }
+      const record = { scope_title, scope_description, sanding_condition, stain_process, stain_color, stain_custom_desc, repairs_description, warranty_waived, stain_underside, multi_area };
       return res.json({ ok: true, line_items: buildLineItems(record, breakdown), breakdown });
     }
 
@@ -569,6 +574,11 @@ app.post("/api/estimate/:id/area-group", requireAuth, (req, res) => {
 async function pushOneEstimate(row, employeeId) {
   let breakdown = {};
   try { breakdown = JSON.parse(row.pricing_snapshot || "{}"); } catch (_) {}
+  // Multi-area job (2+ areas in the group) → include the 10% multi-area discount note.
+  if (row.area_group_id) {
+    const cnt = db.prepare("SELECT COUNT(*) AS c FROM estimates WHERE area_group_id = ?").get(row.area_group_id).c;
+    row.multi_area = cnt > 1;
+  }
   let targetEstimateId = null;
   if (!row.hcp_estimate_id && !row.source_hcp_estimate_id && row.area_group_id) {
     const sib = db.prepare("SELECT hcp_estimate_id FROM estimates WHERE area_group_id = ? AND id != ? AND hcp_estimate_id IS NOT NULL ORDER BY id ASC LIMIT 1").get(row.area_group_id, row.id);

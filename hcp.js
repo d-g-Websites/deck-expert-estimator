@@ -341,6 +341,10 @@ const TERMS_DESC =
   "from the work area, and securing doors, windows, vents, and other openings before work begins.\n\n" +
   "By electronically accepting this estimate and/or paying the deposit, Customer agrees to the estimate, " +
   "payment terms, scope of work, and the Full Terms and Conditions below.";
+// Multi-area incentive ($0 line) — shown when the estimate is part of a multi-area job.
+const MULTI_AREA_DISCOUNT_DESC =
+  "This estimate includes more than one option (area). If the customer approves all of the options, a 10% " +
+  "discount will be applied to the total of each approved option. The prices shown do not yet reflect this discount.";
 // Appended to the T&C line when the tech marks the Workmanship Warranty (§20) as N/A.
 const WARRANTY_WAIVED_APPEND =
   "Workmanship Warranty Exclusion: This project includes work and/or materials the customer has requested " +
@@ -464,6 +468,15 @@ export function buildLineItems(record, breakdown) {
   if (b.discount > 0) {
     const name = b.discount_label ? `Discount — ${b.discount_label}` : "Discount";
     items.push({ name, unit_price: -cents(b.discount), quantity: 1, kind: "discount", taxable: false });
+  }
+
+  // Multi-Area Discount ($0 note) — only when this estimate is part of a multi-area job.
+  if (record.multi_area) {
+    items.push({
+      name: "Multi-Area Discount — 10% if all options are approved",
+      description: MULTI_AREA_DISCOUNT_DESC,
+      unit_price: 0, quantity: 1, kind: "labor", taxable: false,
+    });
   }
 
   // Terms and Conditions — always the last line ($0). Warranty exclusion appended when waived.
