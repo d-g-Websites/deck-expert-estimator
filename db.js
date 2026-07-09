@@ -155,6 +155,9 @@ const MIGRATIONS = {
   warranty_waived: "INTEGER NOT NULL DEFAULT 0",
   // Underside of the deck also needs staining (own line: +75% staining labor, 2× stain).
   stain_underside: "INTEGER NOT NULL DEFAULT 0",
+  // Multi-area: estimates sharing this id belong to one customer job (deck + porch);
+  // they push as separate options on the same HCP estimate.
+  area_group_id: "INTEGER",
 };
 const estimateCols = new Set(db.prepare("PRAGMA table_info(estimates)").all().map(c => c.name));
 for (const [name, ddl] of Object.entries(MIGRATIONS)) {

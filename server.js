@@ -181,8 +181,16 @@ app.get("/api/estimate/:id", requireAuth, (req, res) => {
   const photos = db.prepare("SELECT id, filename, kind, swatch_id, is_design FROM estimate_photos WHERE estimate_id = ? ORDER BY id ASC").all(id);
   let breakdown = {};
   try { breakdown = JSON.parse(row.pricing_snapshot || "{}"); } catch (_) {}
+  // Sibling areas in the same multi-area job (deck + porch), if any.
+  let areaSiblings = [];
+  if (row.area_group_id) {
+    areaSiblings = db.prepare(
+      "SELECT id, scope_title, status, hcp_estimate_id FROM estimates WHERE area_group_id = ? AND id != ? ORDER BY id ASC"
+    ).all(row.area_group_id, row.id).map(r => ({ id: r.id, title: r.scope_title || ("Estimate #" + r.id), status: r.status, pushed: !!r.hcp_estimate_id }));
+  }
   res.json({
     id: row.id, created_at: row.created_at, updated_at: row.updated_at, status: row.status,
+    area_group_id: row.area_group_id || null, area_siblings: areaSiblings,
     customer: { name: row.customer_name, phone: row.customer_phone, email: row.customer_email, address: row.customer_address },
     structure_type: row.structure_type,
     project: (() => {
@@ -303,6 +311,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
     const discount = b.discount ? parseFloat(b.discount) : 0;
     const discount_desc = (b.discount_desc || "").toString().slice(0, 120).trim() || null;
     const source_hcp_estimate_id = (b.source_hcp_estimate_id || "").trim() || null;
+    const area_group_id = b.area_group_id ? (parseInt(b.area_group_id, 10) || null) : null;
     const editId = b.edit_id ? parseInt(b.edit_id, 10) : null;
     const structures_other = (b.structures_other || "").trim() || null;
     // Cleaning inputs
@@ -493,8 +502,8 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
         stain_two_color, stain_two_color_mode,
         repairs, repairs_notes, debris_removal,
         extra_items, discount_cents, discount_desc, pricing_snapshot, source_hcp_estimate_id,
-        scope_title, scope_description, repairs_description, warranty_waived, stain_underside
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        scope_title, scope_description, repairs_description, warranty_waived, stain_underside, area_group_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       customer_name, customer_phone, customer_email, customer_address,
       structure_type, wood_type, deck_location, multilevel_levels,
@@ -506,7 +515,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
       stain_two_color, stain_two_color_mode,
       JSON.stringify(repairs), repairs_notes, debris_removal,
       JSON.stringify(cleanExtras), Math.round(discount * 100), discount_desc, JSON.stringify(breakdown), source_hcp_estimate_id,
-      scope_title, scope_description, repairs_description, warranty_waived, stain_underside
+      scope_title, scope_description, repairs_description, warranty_waived, stain_underside, area_group_id
     );
     const estimateId = result.lastInsertRowid;
 
@@ -539,6 +548,21 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
   }
 });
 
+// Ensure an estimate belongs to a multi-area group (anchor = its own id if new),
+// and return the group id so a linked "another area" can join it.
+app.post("/api/estimate/:id/area-group", requireAuth, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+  const row = db.prepare("SELECT id, area_group_id, customer_name, customer_phone, customer_email, customer_address FROM estimates WHERE id = ?").get(id);
+  if (!row) return res.status(404).json({ error: "Not found" });
+  let groupId = row.area_group_id;
+  if (!groupId) {
+    groupId = row.id;
+    db.prepare("UPDATE estimates SET area_group_id = ? WHERE id = ?").run(groupId, id);
+  }
+  res.json({ ok: true, area_group_id: groupId, customer: { name: row.customer_name, phone: row.customer_phone, email: row.customer_email, address: row.customer_address } });
+});
+
 // ---- Estimates: push to Housecall Pro ----
 app.post("/api/estimate/:id/send-to-hcp", requireAuth, async (req, res) => {
   try {
@@ -552,7 +576,13 @@ app.post("/api/estimate/:id/send-to-hcp", requireAuth, async (req, res) => {
     try { breakdown = JSON.parse(row.pricing_snapshot || "{}"); } catch (_) {}
 
     const employeeId = (req.body && req.body.employee_id) ? String(req.body.employee_id).trim() || null : null;
-    const { customerId, estimateId, mode } = await sendEstimateToHcp(row, breakdown, { employeeId });
+    // Multi-area: if a sibling area already pushed, append this area's option to the same HCP estimate.
+    let targetEstimateId = null;
+    if (!row.hcp_estimate_id && !row.source_hcp_estimate_id && row.area_group_id) {
+      const sib = db.prepare("SELECT hcp_estimate_id FROM estimates WHERE area_group_id = ? AND id != ? AND hcp_estimate_id IS NOT NULL ORDER BY id ASC LIMIT 1").get(row.area_group_id, row.id);
+      if (sib && sib.hcp_estimate_id) targetEstimateId = sib.hcp_estimate_id;
+    }
+    const { customerId, estimateId, mode } = await sendEstimateToHcp(row, breakdown, { employeeId, targetEstimateId });
     const finalCustomerId = customerId || row.hcp_customer_id || null;
     db.prepare(`
       UPDATE estimates SET hcp_customer_id = ?, hcp_estimate_id = ?, hcp_synced_at = datetime('now'),

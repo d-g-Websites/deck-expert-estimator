@@ -552,10 +552,12 @@ async function createEstimate(customerId, record, breakdown, opts = {}) {
 // Otherwise → create a new estimate. Either way, schedule the option + assign tech.
 export async function sendEstimateToHcp(record, breakdown, opts = {}) {
   const employeeId = opts.employeeId || null;
-  // Target an existing HCP estimate when we have one: the estimate this was
-  // already pushed to (re-push after edits → new option), else the synced source.
+  // Target an existing HCP estimate when we have one: a sibling area's estimate
+  // (multi-area), the estimate this was already pushed to (re-push → new option),
+  // or the synced source. Otherwise create new.
   const alreadyPushed = (record.hcp_estimate_id || "").toString().trim() || null;
-  const targetId = alreadyPushed || (record.source_hcp_estimate_id || "").toString().trim() || null;
+  const targetId = (opts.targetEstimateId || "").toString().trim() ||
+    alreadyPushed || (record.source_hcp_estimate_id || "").toString().trim() || null;
   const lineItems = buildLineItems(record, breakdown);
   const dateStamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
 

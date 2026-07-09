@@ -89,14 +89,15 @@ Because the description is free text, **multiple areas are handled descriptively
 today** — the tech writes additional area blocks in the box. The only deferred
 piece is *structured per-area pricing* (see Multiple areas + Q1).
 
-### Multiple areas (edge case) — pricing piece DEFERRED
-- A **"Multiple areas"** toggle (off by default).
-- When on: add areas, each = **name** + **sq ft** + **its own features**.
-- Pricing handling, tech-selectable: **combined** vs **itemized in one estimate**
-  vs **separate HCP option per area**. The *separate-HCP-option* path needs the
-  Options feature machinery, so structured multi-area pricing is built **together
-  with the Options feature** (Phase 3). Descriptive multi-area already works via
-  the editable scope text.
+### Multiple areas (deck + porch) — ✅ BUILT (Approach A: linked separate estimates)
+- Each area is a **full independent estimate** (own services, repairs, scope, stain).
+- **"+ Add another area"** on the estimate view starts a fresh estimate prefilled
+  with the same customer and a shared `area_group_id`.
+- On push, areas in a group **append as separate options on the same HCP estimate**
+  (whichever area pushes first creates the estimate; the rest append to it).
+- Estimate view lists sibling areas ("Other areas in this job").
+- Data: `area_group_id` column; `/api/estimate/:id/area-group` anchors the group;
+  send endpoint resolves a pushed sibling's estimate as the append target.
 
 ---
 

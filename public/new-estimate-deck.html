@@ -413,19 +413,24 @@ function noHorizSanding() {
 
 // --- HCP appointment prefill (set on the structure picker) ---
 let sourceHcpEstimateId = null;
+let areaGroupId = null;
 (function applyPrefill() {
   const raw = sessionStorage.getItem('estimate.prefill');
   if (!raw) return;
   try {
     const p = JSON.parse(raw);
     sourceHcpEstimateId = p.source_hcp_estimate_id || null;
+    areaGroupId = p.area_group_id || null;
     const set = (id, v) => { if (v) document.getElementById(id).value = v; };
     set('customer_name', p.customer_name);
     set('customer_phone', p.customer_phone);
     set('customer_email', p.customer_email);
     set('customer_address', p.customer_address);
     const note = document.getElementById('prefillNote');
-    if (note && (p.customer_name || sourceHcpEstimateId)) {
+    if (note && areaGroupId) {
+      note.style.display = 'block';
+      note.textContent = 'Additional area for ' + (p.customer_name || 'this customer') + ' — this will push as a separate option on the same Housecall Pro estimate.';
+    } else if (note && (p.customer_name || sourceHcpEstimateId)) {
       note.style.display = 'block';
       note.textContent = 'Prefilled from Housecall Pro appointment' + (p.customer_name ? ' for ' + p.customer_name : '') + '.';
     }
@@ -436,6 +441,7 @@ document.getElementById('clearCustomer').addEventListener('click', () => {
   ['customer_name', 'customer_phone', 'customer_email', 'customer_address'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('prefillNote').style.display = 'none';
   sourceHcpEstimateId = null;
+  areaGroupId = null;
   sessionStorage.removeItem('estimate.prefill');
   document.getElementById('customer_name').focus();
 });
@@ -1381,6 +1387,7 @@ function buildEstimateFormData() {
   const fd = new FormData();
   fd.append('structure_type', 'deck');
   if (sourceHcpEstimateId) fd.append('source_hcp_estimate_id', sourceHcpEstimateId);
+  if (areaGroupId) fd.append('area_group_id', areaGroupId);
   fd.append('customer_name', document.getElementById('customer_name').value.trim());
   fd.append('customer_phone', document.getElementById('customer_phone').value.trim());
   fd.append('customer_email', document.getElementById('customer_email').value.trim());
@@ -1471,6 +1478,7 @@ async function loadForEdit(id) {
   try { const r = await fetch('/api/estimate/' + id); if (!r.ok) throw new Error((await r.json()).error || 'HTTP ' + r.status); e = await r.json(); }
   catch (err) { errorBanner.textContent = 'Failed to load estimate: ' + err.message; errorBanner.style.display = 'block'; return; }
   const p = e.project || {}, x = e.edit || {}, c = e.customer || {};
+  areaGroupId = e.area_group_id || null;
   setVal($('customer_name'), c.name); setVal($('customer_phone'), c.phone); setVal($('customer_email'), c.email); setVal($('customer_address'), c.address);
   setVal(els.wood, p.wood_type); fireChange(els.wood);
   setVal(els.location, p.deck_location); fireChange(els.location);

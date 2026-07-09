@@ -153,15 +153,39 @@ function render(e) {
     hcpStatus = '<div class="hcp-status hint">Set <code>HCP_API_KEY</code> on the server to enable Housecall Pro sync.</div>';
   }
   const editBtn = '<a href="/estimate/' + id + '/edit" class="btn secondary" style="width:auto">Edit</a>';
-  const actions = '<div class="actions">' + editBtn + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
+  const addAreaBtn = '<button type="button" class="btn secondary" id="addAreaBtn" style="width:auto">+ Add another area</button>';
+  const actions = '<div class="actions">' + editBtn + addAreaBtn + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
+  let areaCard = '';
+  if (e.area_siblings && e.area_siblings.length) {
+    areaCard = card('Other areas in this job', e.area_siblings.map(s =>
+      '<div class="row"><span class="label"><a href="/estimate/' + s.id + '">' + esc(s.title) + '</a></span><span class="value">' + (s.pushed ? 'pushed' : esc(s.status)) + '</span></div>'
+    ).join('') + '<div class="hint" style="margin-top:0.5rem">Each area pushes as a separate option on the same Housecall Pro estimate.</div>');
+  }
 
-  content.innerHTML = customer + scopeCard + warrantyCard + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
+  content.innerHTML = customer + areaCard + scopeCard + warrantyCard + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
 
   content.querySelectorAll('.photo-tile').forEach(t => t.addEventListener('click', () => openLightbox(t.dataset.url)));
   content.querySelectorAll('img[data-zoom]').forEach(img => img.addEventListener('click', () => openLightbox(img.src)));
   document.getElementById('deleteBtn').addEventListener('click', deleteEstimate);
   const hb = document.getElementById('hcpBtn');
   if (hb) hb.addEventListener('click', sendToHcp);
+  const ab = document.getElementById('addAreaBtn');
+  if (ab) ab.addEventListener('click', addAnotherArea);
+}
+
+async function addAnotherArea() {
+  try {
+    const res = await fetch('/api/estimate/' + id + '/area-group', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    const c = data.customer || {};
+    sessionStorage.setItem('estimate.prefill', JSON.stringify({
+      area_group_id: data.area_group_id,
+      customer_name: c.name || '', customer_phone: c.phone || '',
+      customer_email: c.email || '', customer_address: c.address || '',
+    }));
+    location.href = '/estimate/new/deck';
+  } catch (err) { alert('Could not start another area: ' + err.message); }
 }
 
 function getTechId() { try { return (JSON.parse(localStorage.getItem('hcp.tech') || 'null') || {}).id || null; } catch (_) { return null; } }
