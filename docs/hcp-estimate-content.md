@@ -188,8 +188,8 @@ piece is *structured per-area pricing* (see Multiple areas + Q1).
   the Materials section).
 - **Name + intro vary by `stain_process`**; the **three caveats are shared** and
   appended to **every** staining line.
-- **Color:** NOT inserted yet (deferred) — intro says "in a color selected by the
-  customer."
+- **Color:** ✅ a header line `<Product>: <selected color or TBD>` is prepended for
+  products with color selection (Rymar, BM Solid). IPE (no color) has no header.
 
 ### Shared caveats (appended to all staining lines)
 > - Please note that variations in color and sheen may occur.

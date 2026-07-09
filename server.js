@@ -439,7 +439,7 @@ app.post("/api/estimate", requireAuth, estimateUpload.fields([
 
     // Draft preview: return the exact HCP line items without saving.
     if (b.preview) {
-      const record = { scope_title, scope_description, sanding_condition, stain_process, stain_custom_desc, repairs_description, warranty_waived };
+      const record = { scope_title, scope_description, sanding_condition, stain_process, stain_color, stain_custom_desc, repairs_description, warranty_waived };
       return res.json({ ok: true, line_items: buildLineItems(record, breakdown), breakdown });
     }
 

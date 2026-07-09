@@ -277,11 +277,13 @@ const CUSTOMER_STAIN_DISCLAIMER =
 const STAIN_COPY = {
   rymar_oil_seal: {
     name: "Application of Sealer — Oil-Based Semi-Transparent Rymar Xtreme Weather Sealer",
+    product: "Rymar Xtreme Weather Sealer",
     intro: "Our service includes the application of one coat of oil-based semi-transparent Rymar " +
       "Xtreme Weather Sealer, in a color selected by the customer.",
   },
   bm_solid: {
     name: "Application of Stain — Benjamin Moore Solid WoodLuxe",
+    product: "Benjamin Moore Solid WoodLuxe",
     intro: "This service involves applying one coat of Benjamin Moore Solid WoodLuxe stain, in a " +
       "color selected by the client.",
     notes: [
@@ -414,7 +416,10 @@ export function buildLineItems(record, breakdown) {
       let desc;
       if (copy) {
         const noteLines = (copy.notes || []).map(n => "- " + n).join("\n");
-        desc = [copy.intro, noteLines, STAIN_CAVEATS].filter(Boolean).join("\n");
+        const body = [copy.intro, noteLines, STAIN_CAVEATS].filter(Boolean).join("\n");
+        // Color header: "<Product>: <selected color or TBD>" (products with color selection).
+        const header = copy.product ? `${copy.product}: ${(record.stain_color || "").toString().trim() || "TBD"}` : "";
+        desc = header ? header + "\n\n" + body : body;
       } else {
         desc = STAIN_CAVEATS;
       }
