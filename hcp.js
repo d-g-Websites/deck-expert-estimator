@@ -432,7 +432,8 @@ export function buildLineItems(record, breakdown) {
     const u = b.underside;
     const money = (n) => "$" + (Number(n) || 0).toFixed(2);
     const desc =
-      "Staining / sealing of the underside of the deck, in the same product and color as the deck surface.\n\n" +
+      "The underside of the deck will be cleaned and stained/sealed with the product appropriate for the " +
+      "situation. The cost is shown for the labor and materials needed for the underside here in this section.\n\n" +
       "Because the underside is rough, less accessible, and more absorbent, it requires additional labor and " +
       "roughly twice the stain/sealant of the deck surface.\n\n" +
       `Labor: ${money(u.labor)}\n` +
