@@ -485,63 +485,14 @@ function buildNote(record, breakdown) {
   ].filter(Boolean).join(" ");
 }
 
-// Fetch an estimate by id, or null if it no longer exists in HCP.
-async function getEstimate(estimateId) {
-  try {
-    return await hcpRequest(`/estimates/${estimateId}`);
-  } catch (e) {
-    if (e.status === 404) return null;
-    throw e;
-  }
-}
-
-// Has any option already been approved? (We don't overwrite approved estimates.)
-function isApproved(est) {
-  const opts = Array.isArray(est && est.options) ? est.options : [];
-  return opts.some(o => (o.approval_status || "").toString().toLowerCase() === "approved");
-}
-
-const optLineItemsPath = (estId, optId) => `/estimates/${estId}/options/${optId}/line_items`;
-
-// Overwrite an option's line items. HCP has no single-item create for estimate
-// line items — it uses a bulk update on the collection (like jobs): items without
-// a uuid are created, so sending our full list replaces the option's line items.
-async function replaceLineItems(estimateId, optionId, lineItems) {
-  const path = optLineItemsPath(estimateId, optionId);
-  const body = { line_items: lineItems };
-  try {
-    await hcpRequest(path, { method: "PUT", body });
-  } catch (e) {
-    // Fall back to PATCH if PUT isn't the accepted method for the collection.
-    if (e.status === 404 || e.status === 405) {
-      await hcpRequest(path, { method: "PATCH", body });
-    } else {
-      throw e;
-    }
-  }
-}
-
-// Update a linked HCP estimate in place: overwrite the main option's line items
-// and refresh the note. Schedule, appointment, and assigned tech are untouched.
-async function updateEstimateInPlace(est, record, breakdown) {
-  const opts = Array.isArray(est.options) ? est.options : [];
-  const mainOpt = opts[0];
-  if (!mainOpt) throw new Error("Linked HCP estimate has no option to update");
-  const optId = pickId(mainOpt, "id", "uuid");
-  await replaceLineItems(est.id, optId, buildLineItems(record, breakdown));
-  // Refresh the estimate note (best-effort — non-fatal if the field isn't writable).
-  try { await hcpRequest(`/estimates/${est.id}`, { method: "PATCH", body: { note: buildNote(record, breakdown) } }); } catch (_) {}
-  return pickId(est.customer || {}, "id", "uuid");
-}
-
 // Create an estimate in HCP for a customer. HCP estimates are multi-option, so
-// line items live under an option (options[].line_items), not at the top level.
+// line items live under an option (options[].line_items), set inline at creation
+// (HCP has no API to edit an estimate's line items after the fact).
 // opts.employeeId assigns the tech; opts.schedule (default true) puts it on today.
 // Returns the estimate id.
 export async function createEstimate(customerId, addressId, record, breakdown, opts = {}) {
   const note = buildNote(record, breakdown);
-
-  const payload = {
+  const base = {
     customer_id: customerId,
     options: [{
       name: "Option #1",
@@ -550,35 +501,35 @@ export async function createEstimate(customerId, addressId, record, breakdown, o
     }],
     note,
   };
-  if (addressId) payload.address_id = addressId;
-  if (opts.employeeId) payload.assigned_employee_ids = [opts.employeeId];
-  if (opts.schedule !== false) payload.schedule = todayScheduleUTC(opts.windowMinutes || 120);
+  if (addressId) base.address_id = addressId;
 
-  const created = await hcpRequest("/estimates", { method: "POST", body: payload });
+  // Scheduling + tech assignment are inferred fields; if HCP rejects them, retry
+  // without so the estimate + line items still get created (we log what was dropped).
+  const full = { ...base };
+  if (opts.employeeId) full.assigned_employee_ids = [opts.employeeId];
+  if (opts.schedule !== false) full.schedule = todayScheduleUTC(opts.windowMinutes || 120);
+
+  let created;
+  try {
+    created = await hcpRequest("/estimates", { method: "POST", body: full });
+  } catch (e) {
+    if (e.status >= 400 && e.status < 500 && (full.schedule || full.assigned_employee_ids)) {
+      console.warn("[hcp] create with schedule/assignment failed; retrying without —", e.status, e.message);
+      created = await hcpRequest("/estimates", { method: "POST", body: base });
+    } else {
+      throw e;
+    }
+  }
   const id = pickId(created, "id", "uuid") || pickId(created?.estimate || {}, "id", "uuid");
   if (!id) throw new Error("HCP estimate created but no id was returned");
   return id;
 }
 
-// Orchestrates the full push. When the app estimate was prefilled from an
-// existing HCP estimate (source_hcp_estimate_id) that still exists, we overwrite
-// it in place; otherwise we create a new scheduled+assigned estimate (walk-up).
+// Orchestrates the full push. HCP's API only lets us set estimate line items at
+// creation time (there's no endpoint to edit them afterward), so every push
+// creates a new estimate with the line items inline, scheduled today + assigned.
 export async function sendEstimateToHcp(record, breakdown, opts = {}) {
   const employeeId = opts.employeeId || null;
-  const sourceId = (record.source_hcp_estimate_id || "").toString().trim() || null;
-
-  // Update path: prefilled from an existing HCP estimate that's still there and
-  // not yet approved → overwrite it in place (schedule/appointment/tech kept).
-  if (sourceId) {
-    const est = await getEstimate(sourceId);
-    if (est && !isApproved(est)) {
-      const customerId = await updateEstimateInPlace(est, record, breakdown);
-      return { customerId, estimateId: sourceId, mode: "updated" };
-    }
-    // Missing (deleted in HCP) or already approved → fall through to create new.
-  }
-
-  // Create path: walk-up (or source gone) → new estimate scheduled today + assigned.
   const customerId = await upsertCustomer({
     name: record.customer_name,
     email: record.customer_email,

@@ -146,10 +146,7 @@ function render(e) {
     hcpBtn = '<button type="button" class="btn secondary" disabled>✓ Sent to Housecall Pro</button>';
     hcpStatus = '<div class="hcp-status notice">Synced to HCP — customer ' + esc(e.hcp.customer_id) + ', estimate ' + esc(e.hcp.estimate_id) + '.</div>';
   } else if (e.hcp.enabled) {
-    const linked = e.hcp.source_estimate_id;
-    const lbl = linked ? 'Update Housecall Pro estimate' : 'Send to Housecall Pro';
-    hcpBtn = '<button type="button" class="btn primary" id="hcpBtn" style="width:auto">' + lbl + '</button>';
-    if (linked) hcpStatus = '<div class="hcp-status hint">Linked to a scheduled HCP estimate — pushing updates it in place (schedule &amp; tech kept).</div>';
+    hcpBtn = '<button type="button" class="btn primary" id="hcpBtn" style="width:auto">Send to Housecall Pro</button>';
   } else {
     hcpBtn = '<button type="button" class="btn secondary" disabled title="Set HCP_API_KEY to enable">Send to Housecall Pro</button>';
     hcpStatus = '<div class="hcp-status hint">Set <code>HCP_API_KEY</code> on the server to enable Housecall Pro sync.</div>';
