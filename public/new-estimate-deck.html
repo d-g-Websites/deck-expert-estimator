@@ -871,12 +871,37 @@ document.getElementById('debris_removal').addEventListener('input', updateRepair
 
 // --- Repairs write-up draft (HCP estimate §5 body; footers auto-added server-side) ---
 const repairsDescEl = $('repairs_description');
+function repairBullet(label, material, boardLabel, qty) {
+  const spec = [material, boardLabel].filter(Boolean).join(' ');
+  return '- ' + label + (spec ? ' — ' + spec : '') + ' (Qty ' + qty + ')';
+}
 function buildRepairsDraft() {
-  const b = repairsBreakdown();
-  const lines = [];
-  for (const ln of b.lines) lines.push('- ' + ln.label + (ln.qty > 1 ? ' (Qty ' + ln.qty + ')' : ''));
-  for (const f of b.flags) lines.push('- ' + f);
-  return lines.length ? 'Scope of Repair/Replacement:\n' + lines.join('\n') : '';
+  const bullets = [];
+  for (const r of getRepairs()) {
+    const def = REPAIRS && REPAIRS[r.item_id];
+    if (!def) continue;
+    const mode = def.mode || 'material';
+    if (mode === 'flag') { if (r.flagged) bullets.push('- ' + def.label); continue; }
+    if (mode === 'other') {
+      const base = def.label + (r.description ? ': ' + r.description : '');
+      for (const ln of (r.lines || [])) {
+        if (!(ln.qty > 0)) continue;
+        if (ln.material === 'other') { bullets.push(repairBullet(base, '', ln.custom_name || '', ln.qty)); }
+        else { const cat = LUMBER && LUMBER[ln.material]; const bd = cat && cat.items[ln.board]; bullets.push(repairBullet(base, matLabel(ln.material), bd ? bd.label : '', ln.qty)); }
+      }
+      continue;
+    }
+    for (const ln of (r.lines || [])) {
+      if (!(ln.qty > 0)) continue;
+      if (mode === 'qty') { bullets.push('- ' + def.label + ' (Qty ' + ln.qty + ')'); continue; }
+      if (mode === 'options') { const o = def.options && def.options[ln.option]; bullets.push('- ' + def.label + (o ? ' — ' + o.label : '') + ' (Qty ' + ln.qty + ')'); continue; }
+      const cat = LUMBER && LUMBER[ln.material]; const bd = cat && cat.items[ln.board];
+      let base = def.label;
+      if (def.toggle && r.toggled) base += ' (' + def.toggle.label + ')';
+      bullets.push(repairBullet(base, matLabel(ln.material), bd ? bd.label : '', ln.qty));
+    }
+  }
+  return bullets.length ? 'Scope of Repair/Replacement:\n' + bullets.join('\n') : '';
 }
 $('regenRepairs').addEventListener('click', () => {
   if (repairsDescEl.value.trim() && !confirm('Replace the write-up with a fresh draft? Your edits will be lost.')) return;

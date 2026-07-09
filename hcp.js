@@ -347,11 +347,16 @@ const WARRANTY_WAIVED_APPEND =
   "no workmanship warranty is provided for this work.";
 
 // Fallback repairs write-up body when the tech didn't enter one.
+const REPAIR_MATERIAL_LABELS = { cedar: "Cedar", pressure_treated: "Pressure-treated", ipe: "Ipe", engineered: "Engineered" };
 function repairsFallbackBody(breakdown) {
   const items = (breakdown.repairs && breakdown.repairs.items) || [];
   const lines = items
     .filter(i => (Number(i.cost) || 0) > 0 || i.flagged)
-    .map(i => "- " + (i.item_label || i.item_id) + (i.qty > 1 ? ` (Qty ${i.qty})` : ""));
+    .map(i => {
+      if (i.flagged) return "- " + (i.item_label || i.item_id);
+      const spec = [REPAIR_MATERIAL_LABELS[i.material] || i.material, i.board_label].filter(Boolean).join(" ");
+      return "- " + (i.item_label || i.item_id) + (spec ? " — " + spec : "") + ` (Qty ${i.qty})`;
+    });
   return lines.length ? "Scope of Repair/Replacement:\n" + lines.join("\n") : "";
 }
 
