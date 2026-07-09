@@ -78,9 +78,59 @@ function loadEstimates() {
       list.innerHTML = '<div class="placeholder">No estimates yet. Tap “New Estimate” to start one.</div>';
       return;
     }
+    // Group multi-area jobs (shared area_group_id) into one tile; keep recency order.
+    const groups = new Map(); const order = [];
+    for (const e of estimates) {
+      const key = e.area_group_id ? ('g' + e.area_group_id) : ('s' + e.id);
+      if (!groups.has(key)) { groups.set(key, []); order.push(key); }
+      groups.get(key).push(e);
+    }
     list.innerHTML = '';
-    for (const e of estimates) list.appendChild(buildRow(e));
+    for (const key of order) {
+      const members = groups.get(key);
+      list.appendChild(members.length === 1 ? buildRow(members[0]) : buildGroupRow(members));
+    }
   }).catch(err => { list.innerHTML = '<div class="placeholder">Failed to load: ' + esc(err.message) + '</div>'; });
+}
+
+function buildGroupRow(members) {
+  const row = document.createElement('div');
+  row.className = 'estimate-row';
+  const groupId = members[0].area_group_id;
+  const totalSum = members.reduce((s, m) => s + (m.total || 0), 0);
+  const allSynced = members.every(m => m.hcp_synced);
+  const areaLines = members.map(m =>
+    '<div class="er-area" data-id="' + m.id + '" style="cursor:pointer;padding:0.2rem 0;color:var(--brown)">' +
+    '↳ ' + esc(m.scope_title || cap(m.structure_type) || 'Area') + ' · ' + (m.surface_sqft || 0) + ' sq ft · $' + (m.total || 0).toFixed(2) +
+    (m.hcp_synced ? ' · ✓' : '') + '</div>').join('');
+  row.innerHTML =
+    '<div class="er-main"><div class="name">' + esc(members[0].customer_name) + '</div>' +
+    '<div class="meta">Multi-area job · ' + members.length + ' areas</div>' +
+    '<div class="er-areas" style="margin-top:0.35rem">' + areaLines + '</div></div>' +
+    '<div style="text-align:right"><div class="total">$' + totalSum.toFixed(2) + '</div>' +
+    '<div class="badge ' + (allSynced ? 'sent' : 'draft') + '">' + (allSynced ? 'sent' : 'draft') + '</div></div>' +
+    '<div class="er-actions">' +
+      '<button class="b-hcp" type="button">' + (allSynced ? '✓ Sent to HCP' : 'Push all to HCP') + '</button>' +
+    '</div>';
+  row.querySelectorAll('.er-area').forEach(a => a.addEventListener('click', () => { location.href = '/estimate/' + a.dataset.id; }));
+  const hcpBtn = row.querySelector('.b-hcp');
+  if (allSynced) { hcpBtn.disabled = true; }
+  else if (!HCP_ENABLED) { hcpBtn.disabled = true; hcpBtn.title = 'Set HCP_API_KEY on the server to enable'; }
+  else hcpBtn.addEventListener('click', () => pushGroupToHcp(groupId, hcpBtn, row, members.length));
+  return row;
+}
+
+function pushGroupToHcp(groupId, btn, row, count) {
+  if (!confirm('Push all ' + count + ' areas to Housecall Pro? (one estimate with ' + count + ' options)')) return;
+  btn.classList.add('busy'); btn.textContent = 'Pushing…';
+  fetch('/api/estimate-group/' + groupId + '/send-to-hcp', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employee_id: getTechId() }),
+  })
+    .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status); return d; })
+    .then(() => { btn.classList.remove('busy'); btn.textContent = '✓ Sent to HCP'; btn.disabled = true;
+      const badge = row.querySelector('.badge'); if (badge) { badge.textContent = 'sent'; badge.className = 'badge sent'; } })
+    .catch(err => { btn.classList.remove('busy'); btn.textContent = 'Push all to HCP'; alert('Push failed: ' + err.message); });
 }
 
 function buildRow(e) {

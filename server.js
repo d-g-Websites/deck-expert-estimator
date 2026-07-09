@@ -156,7 +156,7 @@ app.post("/api/render", requireAuth, renderUpload.single("photo"), async (req, r
 app.get("/api/estimates", requireAuth, (req, res) => {
   const rows = db.prepare(`
     SELECT id, created_at, customer_name, structure_type, wood_type,
-           surface_sqft, pricing_snapshot, status, hcp_estimate_id
+           surface_sqft, pricing_snapshot, status, hcp_estimate_id, area_group_id, scope_title
     FROM estimates ORDER BY datetime(created_at) DESC LIMIT 100
   `).all();
   res.json(rows.map(r => {
@@ -168,6 +168,7 @@ app.get("/api/estimates", requireAuth, (req, res) => {
       structure_type: r.structure_type, wood_type: r.wood_type,
       surface_sqft: r.surface_sqft, status: r.status, total, photo_count: photoCount,
       hcp_synced: !!r.hcp_estimate_id,
+      area_group_id: r.area_group_id || null, scope_title: r.scope_title || null,
     };
   }));
 });
@@ -563,6 +564,35 @@ app.post("/api/estimate/:id/area-group", requireAuth, (req, res) => {
   res.json({ ok: true, area_group_id: groupId, customer: { name: row.customer_name, phone: row.customer_phone, email: row.customer_email, address: row.customer_address } });
 });
 
+// Push one estimate: resolve the target HCP estimate (sibling area / re-push /
+// synced source), send, and record the result. Returns { customerId, estimateId, mode }.
+async function pushOneEstimate(row, employeeId) {
+  let breakdown = {};
+  try { breakdown = JSON.parse(row.pricing_snapshot || "{}"); } catch (_) {}
+  let targetEstimateId = null;
+  if (!row.hcp_estimate_id && !row.source_hcp_estimate_id && row.area_group_id) {
+    const sib = db.prepare("SELECT hcp_estimate_id FROM estimates WHERE area_group_id = ? AND id != ? AND hcp_estimate_id IS NOT NULL ORDER BY id ASC LIMIT 1").get(row.area_group_id, row.id);
+    if (sib && sib.hcp_estimate_id) targetEstimateId = sib.hcp_estimate_id;
+  }
+  const { customerId, estimateId, mode } = await sendEstimateToHcp(row, breakdown, { employeeId, targetEstimateId });
+  const finalCustomerId = customerId || row.hcp_customer_id || null;
+  db.prepare(`
+    UPDATE estimates SET hcp_customer_id = ?, hcp_estimate_id = ?, hcp_synced_at = datetime('now'),
+      status = 'sent', updated_at = datetime('now') WHERE id = ?
+  `).run(finalCustomerId ? String(finalCustomerId) : null, String(estimateId), row.id);
+  return { customerId: finalCustomerId, estimateId, mode };
+}
+
+function hcpSendError(res, err) {
+  console.error("[hcp] send error:", err, err.body || "");
+  let detail = err.message || "Failed to send to Housecall Pro";
+  if (err.body && typeof err.body === "object") {
+    const fields = err.body.errors || err.body.error_messages || err.body.details;
+    if (fields) detail += " — " + (typeof fields === "string" ? fields : JSON.stringify(fields));
+  }
+  res.status(502).json({ error: detail, hcp_status: err.status || null });
+}
+
 // ---- Estimates: push to Housecall Pro ----
 app.post("/api/estimate/:id/send-to-hcp", requireAuth, async (req, res) => {
   try {
@@ -571,34 +601,31 @@ app.post("/api/estimate/:id/send-to-hcp", requireAuth, async (req, res) => {
     if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
     const row = db.prepare("SELECT * FROM estimates WHERE id = ?").get(id);
     if (!row) return res.status(404).json({ error: "Not found" });
-
-    let breakdown = {};
-    try { breakdown = JSON.parse(row.pricing_snapshot || "{}"); } catch (_) {}
-
     const employeeId = (req.body && req.body.employee_id) ? String(req.body.employee_id).trim() || null : null;
-    // Multi-area: if a sibling area already pushed, append this area's option to the same HCP estimate.
-    let targetEstimateId = null;
-    if (!row.hcp_estimate_id && !row.source_hcp_estimate_id && row.area_group_id) {
-      const sib = db.prepare("SELECT hcp_estimate_id FROM estimates WHERE area_group_id = ? AND id != ? AND hcp_estimate_id IS NOT NULL ORDER BY id ASC LIMIT 1").get(row.area_group_id, row.id);
-      if (sib && sib.hcp_estimate_id) targetEstimateId = sib.hcp_estimate_id;
-    }
-    const { customerId, estimateId, mode } = await sendEstimateToHcp(row, breakdown, { employeeId, targetEstimateId });
-    const finalCustomerId = customerId || row.hcp_customer_id || null;
-    db.prepare(`
-      UPDATE estimates SET hcp_customer_id = ?, hcp_estimate_id = ?, hcp_synced_at = datetime('now'),
-        status = 'sent', updated_at = datetime('now') WHERE id = ?
-    `).run(finalCustomerId ? String(finalCustomerId) : null, String(estimateId), id);
+    const r = await pushOneEstimate(row, employeeId);
+    res.json({ ok: true, hcp_customer_id: r.customerId, hcp_estimate_id: r.estimateId, mode: r.mode });
+  } catch (err) { hcpSendError(res, err); }
+});
 
-    res.json({ ok: true, hcp_customer_id: finalCustomerId, hcp_estimate_id: estimateId, mode });
-  } catch (err) {
-    console.error("[hcp] send error:", err, err.body || "");
-    let detail = err.message || "Failed to send to Housecall Pro";
-    if (err.body && typeof err.body === "object") {
-      const fields = err.body.errors || err.body.error_messages || err.body.details;
-      if (fields) detail += " — " + (typeof fields === "string" ? fields : JSON.stringify(fields));
+// Push every area in a multi-area group, in order, so later areas append as
+// options on the same HCP estimate the first area creates.
+app.post("/api/estimate-group/:groupId/send-to-hcp", requireAuth, async (req, res) => {
+  try {
+    if (!hcpEnabled()) return res.status(503).json({ error: "Housecall Pro not configured" });
+    const groupId = parseInt(req.params.groupId, 10);
+    if (!Number.isFinite(groupId)) return res.status(400).json({ error: "Invalid id" });
+    const rows = db.prepare("SELECT * FROM estimates WHERE area_group_id = ? ORDER BY id ASC").all(groupId);
+    if (!rows.length) return res.status(404).json({ error: "No areas in this group" });
+    const employeeId = (req.body && req.body.employee_id) ? String(req.body.employee_id).trim() || null : null;
+    const results = [];
+    let hcpEstimateId = null;
+    for (const row of rows) {
+      const r = await pushOneEstimate(row, employeeId);
+      hcpEstimateId = r.estimateId;
+      results.push({ id: row.id, mode: r.mode });
     }
-    res.status(502).json({ error: detail, hcp_status: err.status || null });
-  }
+    res.json({ ok: true, hcp_estimate_id: hcpEstimateId, count: results.length, results });
+  } catch (err) { hcpSendError(res, err); }
 });
 
 app.listen(PORT, "127.0.0.1", () => console.log(`deck-expert-estimator listening on http://127.0.0.1:${PORT}`));
