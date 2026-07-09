@@ -99,10 +99,15 @@ function buildGroupRow(members) {
   const groupId = members[0].area_group_id;
   const totalSum = members.reduce((s, m) => s + (m.total || 0), 0);
   const allSynced = members.every(m => m.hcp_synced);
+  const miniBtn = 'font-size:0.8rem;padding:0.25rem 0.65rem;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer';
   const areaLines = members.map(m =>
-    '<div class="er-area" data-id="' + m.id + '" style="cursor:pointer;padding:0.2rem 0;color:var(--brown)">' +
-    '↳ ' + esc(m.scope_title || cap(m.structure_type) || 'Area') + ' · ' + (m.surface_sqft || 0) + ' sq ft · $' + (m.total || 0).toFixed(2) +
-    (m.hcp_synced ? ' · ✓' : '') + '</div>').join('');
+    '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0">' +
+      '<span class="er-area" data-id="' + m.id + '" style="cursor:pointer;flex:1;color:var(--brown)">' +
+      '↳ ' + esc(m.scope_title || cap(m.structure_type) || 'Area') + ' · ' + (m.surface_sqft || 0) + ' sq ft · $' + (m.total || 0).toFixed(2) +
+      (m.hcp_synced ? ' · ✓' : '') + '</span>' +
+      '<button class="b-area-edit" data-id="' + m.id + '" type="button" style="' + miniBtn + '">Edit</button>' +
+      '<button class="b-area-del" data-id="' + m.id + '" type="button" style="' + miniBtn + ';color:var(--danger,#b00)">Delete</button>' +
+    '</div>').join('');
   row.innerHTML =
     '<div class="er-main"><div class="name">' + esc(members[0].customer_name) + '</div>' +
     '<div class="meta">Multi-area job · ' + members.length + ' areas</div>' +
@@ -113,6 +118,8 @@ function buildGroupRow(members) {
       '<button class="b-hcp" type="button">' + (allSynced ? '✓ Sent to HCP' : 'Push all to HCP') + '</button>' +
     '</div>';
   row.querySelectorAll('.er-area').forEach(a => a.addEventListener('click', () => { location.href = '/estimate/' + a.dataset.id; }));
+  row.querySelectorAll('.b-area-edit').forEach(b => b.addEventListener('click', () => { location.href = '/estimate/' + b.dataset.id + '/edit'; }));
+  row.querySelectorAll('.b-area-del').forEach(b => b.addEventListener('click', () => deleteEstimateArea(b.dataset.id)));
   const hcpBtn = row.querySelector('.b-hcp');
   if (allSynced) { hcpBtn.disabled = true; }
   else if (!HCP_ENABLED) { hcpBtn.disabled = true; hcpBtn.title = 'Set HCP_API_KEY on the server to enable'; }
@@ -120,6 +127,13 @@ function buildGroupRow(members) {
   return row;
 }
 
+function deleteEstimateArea(id) {
+  if (!confirm('Delete this area (estimate #' + id + ')? This cannot be undone.')) return;
+  fetch('/api/estimate/' + id, { method: 'DELETE' })
+    .then(async r => { if (!r.ok) throw new Error((await r.json()).error || 'HTTP ' + r.status); })
+    .then(() => loadEstimates())
+    .catch(err => alert('Delete failed: ' + err.message));
+}
 function pushGroupToHcp(groupId, btn, row, count) {
   if (!confirm('Push all ' + count + ' areas to Housecall Pro? (one estimate with ' + count + ' options)')) return;
   btn.classList.add('busy'); btn.textContent = 'Pushing…';
