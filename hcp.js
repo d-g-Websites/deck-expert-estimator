@@ -527,24 +527,27 @@ async function createEstimate(customerId, record, breakdown, opts = {}) {
 // Otherwise → create a new estimate. Either way, schedule the option + assign tech.
 export async function sendEstimateToHcp(record, breakdown, opts = {}) {
   const employeeId = opts.employeeId || null;
-  const sourceId = (record.source_hcp_estimate_id || "").toString().trim() || null;
+  // Target an existing HCP estimate when we have one: the estimate this was
+  // already pushed to (re-push after edits → new option), else the synced source.
+  const alreadyPushed = (record.hcp_estimate_id || "").toString().trim() || null;
+  const targetId = alreadyPushed || (record.source_hcp_estimate_id || "").toString().trim() || null;
   const lineItems = buildLineItems(record, breakdown);
   const dateStamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
 
-  // Append path: put our option on the existing (synced) estimate.
-  if (sourceId) {
-    const est = await getEstimate(sourceId).catch(() => null);
+  // Append path: put our option on the existing estimate (synced or re-push).
+  if (targetId) {
+    const est = await getEstimate(targetId).catch(() => null);
     if (est) {
-      const customerId = pickId(est.customer || {}, "id", "uuid") || null;
-      const opt = await appendOptionToEstimate(sourceId, `${optionBaseName(record)} — ${dateStamp}`, lineItems);
+      const customerId = pickId(est.customer || {}, "id", "uuid") || record.hcp_customer_id || null;
+      const opt = await appendOptionToEstimate(targetId, `${optionBaseName(record)} — ${dateStamp}`, lineItems);
       const optionId = pickId(opt, "id", "uuid") || pickId(opt.option || {}, "id", "uuid");
       if (!optionId) throw new Error("HCP append option returned no id");
       const sched = existingSchedule(est) || todayWindow();
-      try { await setOptionSchedule(sourceId, optionId, sched.start, sched.end, employeeId); }
+      try { await setOptionSchedule(targetId, optionId, sched.start, sched.end, employeeId); }
       catch (e) { console.warn("[hcp] option schedule failed:", e.message); }
-      return { customerId, estimateId: sourceId, optionId, mode: "appended" };
+      return { customerId, estimateId: targetId, optionId, mode: alreadyPushed ? "re-appended" : "appended" };
     }
-    // Source gone → fall through to create new.
+    // Target gone → fall through to create new.
   }
 
   // Create path: new estimate + schedule its option for today.

@@ -143,15 +143,16 @@ function render(e) {
   // HCP send
   let hcpBtn, hcpStatus = '';
   if (e.hcp.estimate_id) {
-    hcpBtn = '<button type="button" class="btn secondary" disabled>✓ Sent to Housecall Pro</button>';
-    hcpStatus = '<div class="hcp-status notice">Synced to HCP — customer ' + esc(e.hcp.customer_id) + ', estimate ' + esc(e.hcp.estimate_id) + '.</div>';
+    hcpBtn = '<button type="button" class="btn primary" id="hcpBtn" style="width:auto">Push again (new option)</button>';
+    hcpStatus = '<div class="hcp-status notice">Synced to HCP — estimate ' + esc(e.hcp.estimate_id) + '. Edit, then push again to add an updated option.</div>';
   } else if (e.hcp.enabled) {
     hcpBtn = '<button type="button" class="btn primary" id="hcpBtn" style="width:auto">Send to Housecall Pro</button>';
   } else {
     hcpBtn = '<button type="button" class="btn secondary" disabled title="Set HCP_API_KEY to enable">Send to Housecall Pro</button>';
     hcpStatus = '<div class="hcp-status hint">Set <code>HCP_API_KEY</code> on the server to enable Housecall Pro sync.</div>';
   }
-  const actions = '<div class="actions">' + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
+  const editBtn = '<a href="/estimate/' + id + '/edit" class="btn secondary" style="width:auto">Edit</a>';
+  const actions = '<div class="actions">' + editBtn + hcpBtn + '<button type="button" class="btn danger" id="deleteBtn">Delete</button></div>' + hcpStatus;
 
   content.innerHTML = customer + scopeCard + warrantyCard + project + repairsCard + extras + totals + renderHtml + photosHtml + actions;
 
@@ -165,6 +166,7 @@ function render(e) {
 function getTechId() { try { return (JSON.parse(localStorage.getItem('hcp.tech') || 'null') || {}).id || null; } catch (_) { return null; } }
 async function sendToHcp() {
   const btn = document.getElementById('hcpBtn');
+  const orig = btn.textContent;
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
     const res = await fetch('/api/estimate/' + id + '/send-to-hcp', {
@@ -176,7 +178,7 @@ async function sendToHcp() {
     location.reload();
   } catch (err) {
     alert('Housecall Pro send failed: ' + err.message);
-    btn.disabled = false; btn.textContent = 'Send to Housecall Pro';
+    btn.disabled = false; btn.textContent = orig;
   }
 }
 async function deleteEstimate() {

@@ -551,12 +551,13 @@ app.post("/api/estimate/:id/send-to-hcp", requireAuth, async (req, res) => {
 
     const employeeId = (req.body && req.body.employee_id) ? String(req.body.employee_id).trim() || null : null;
     const { customerId, estimateId, mode } = await sendEstimateToHcp(row, breakdown, { employeeId });
+    const finalCustomerId = customerId || row.hcp_customer_id || null;
     db.prepare(`
       UPDATE estimates SET hcp_customer_id = ?, hcp_estimate_id = ?, hcp_synced_at = datetime('now'),
         status = 'sent', updated_at = datetime('now') WHERE id = ?
-    `).run(String(customerId), String(estimateId), id);
+    `).run(finalCustomerId ? String(finalCustomerId) : null, String(estimateId), id);
 
-    res.json({ ok: true, hcp_customer_id: customerId, hcp_estimate_id: estimateId, mode });
+    res.json({ ok: true, hcp_customer_id: finalCustomerId, hcp_estimate_id: estimateId, mode });
   } catch (err) {
     console.error("[hcp] send error:", err, err.body || "");
     let detail = err.message || "Failed to send to Housecall Pro";
