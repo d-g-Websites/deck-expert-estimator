@@ -596,6 +596,17 @@ export function computeDeckEstimate(input) {
   const staining = computeStaining(input);
   const repairs = computeRepairs(input.repairs, input.debris_removal, input.deck_location);
   const materials = computeMaterials(input);
+
+  // Underside of the deck (own section — not folded into staining/materials):
+  //   labor = 75% of the staining labor; stain = 2× the deck's stain material.
+  const deckStainCost = (materials.items.find(i => i.id === "stain_material") || {}).cost || 0;
+  let underside = { enabled: false, labor: 0, stain_material: 0, total: 0 };
+  if (input.stain_underside && staining.total > 0) {
+    const uLabor = round2(staining.total * 0.75);
+    const uStain = round2(deckStainCost * 2);
+    underside = { enabled: true, labor: uLabor, stain_material: uStain, total: round2(uLabor + uStain) };
+  }
+
   // Repair materials are billed in the Materials section (repairs line = labor + debris).
   if (repairs.materials > 0) {
     materials.items.push({ id: "repair_materials", label: "Repair / replacement materials", cost: repairs.materials });
@@ -606,13 +617,14 @@ export function computeDeckEstimate(input) {
   const extras = Array.isArray(input.extra_items) ? input.extra_items : [];
   const extrasTotal = extras.reduce((s, x) => s + (parseFloat(x.price) || 0), 0);
 
-  const subtotal = cleaning.total + sanding.total + staining.total + repairs.total + materials.total + extrasTotal;
+  const subtotal = cleaning.total + sanding.total + staining.total + underside.total + repairs.total + materials.total + extrasTotal;
   const total = Math.max(0, subtotal - discount);
 
   return {
     cleaning,
     sanding,
     staining,
+    underside,
     repairs,
     materials,
     extras: extrasTotal,

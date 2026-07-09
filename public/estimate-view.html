@@ -121,6 +121,7 @@ function render(e) {
     ((cl.total || 0) > 0 ? row('Cleaning', fmt(cl.total)) : '') +
     ((sd.total || 0) > 0 ? row('Sanding' + (e.labels.sanding ? ' (' + e.labels.sanding + ')' : ''), fmt(sd.total)) : '') +
     ((stn.total || 0) > 0 ? row('Staining' + (e.labels.stain_process ? ' (' + e.labels.stain_process + ')' : ''), fmt(stn.total)) : '') +
+    ((b.underside && b.underside.total > 0) ? row('Underside staining', fmt(b.underside.total)) : '') +
     ((rep.total || 0) > 0 ? row('Repairs / replacement', fmt(rep.total)) : '') +
     ((mat.total || 0) > 0 ? row('Materials & supplies', fmt(mat.total)) : '') +
     (b.extras > 0 ? row('Extra services', fmt(b.extras)) : '') +

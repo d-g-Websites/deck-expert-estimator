@@ -173,6 +173,8 @@
         <label for="surface_sqft">Square footage of the deck *</label>
         <input type="number" id="surface_sqft" inputmode="decimal" step="0.1" min="0" required>
         <label class="check-line" style="margin-top:0.6rem;font-weight:500"><input type="checkbox" id="steps_included"> Steps included in this square footage</label>
+        <label class="check-line" style="margin-top:0.4rem;font-weight:500"><input type="checkbox" id="stain_underside"> Underside of the deck also needs staining</label>
+        <div class="hint">Adds its own line: +75% of staining labor and 2× the stain/sealant.</div>
       </div>
 
       <div class="field"><label for="prior_finish">Any prior finishes</label><select id="prior_finish"></select></div>
@@ -263,6 +265,7 @@
       <div class="total-row" id="cleaningRow" style="display:none"><span>Cleaning</span><span id="cleaningTotal">$0.00</span></div>
       <div class="total-row" id="sandingRow" style="display:none"><span>Sanding</span><span id="sandingTotal">$0.00</span></div>
       <div class="total-row" id="stainingRow" style="display:none"><span id="stainingLabel">Staining</span><span id="stainingTotal">$0.00</span></div>
+      <div class="total-row" id="undersideRow" style="display:none"><span>Underside staining</span><span id="undersideTotal">$0.00</span></div>
       <div class="total-row" id="repairsRow" style="display:none"><span>Repairs / replacement</span><span id="repairsRowTotal">$0.00</span></div>
       <div class="total-row" id="materialsRow" style="display:none"><span>Materials &amp; supplies</span><span id="materialsTotal">$0.00</span></div>
       <div class="total-row" id="extrasRow" style="display:none"><span>Extra services</span><span id="extrasTotal">$0.00</span></div>
@@ -1075,6 +1078,27 @@ function computeMaterials() {
   return { total: Math.round(total * 100) / 100 };
 }
 
+// Deck-surface stain material cost (gallons only — no railing/supplies). Used ×2 for the underside.
+function deckStainMaterial() {
+  if (!MATERIALS || !stainingEnabled.checked) return 0;
+  const combined = num(els.sqft) + ($('stain_vertical').checked ? num($('stain_vertical_sqft')) : 0);
+  if (combined <= 0) return 0;
+  const proc = PROCESSES && PROCESSES[els.stainProcess.value];
+  const matKey = proc && proc.material;
+  const mb = (matKey && !stainCustomerSupplied.checked) ? MATERIALS.stain_brands[matKey] : null;
+  if (!mb) return 0;
+  return Math.ceil(combined / mb.coverage_sqft) * mb.price_per_gallon;
+}
+
+// Underside of deck (own section): 75% of staining labor + 2× the deck stain material.
+function computeUnderside() {
+  if (!$('stain_underside').checked || !stainingEnabled.checked) return { enabled: false, labor: 0, stain: 0, total: 0 };
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const labor = r2(computeStaining().total * 0.75);
+  const stain = r2(deckStainMaterial() * 2);
+  return { enabled: true, labor, stain, total: r2(labor + stain) };
+}
+
 function computeStaining() {
   if (!STAINING || !stainingEnabled.checked) return { enabled: false, labor: 0, pergola: 0, surcharge: 0, total: 0 };
   const proc = PROCESSES && PROCESSES[els.stainProcess.value];
@@ -1125,10 +1149,11 @@ function updateTotal() {
   const st = computeStaining();
   const rp = computeRepairs();
   const m = computeMaterials();
+  const un = computeUnderside();
   const materialsTotal = Math.round(((m.total || 0) + (rp.materials || 0)) * 100) / 100; // repair materials billed here
   const extras = getExtras().reduce((acc, x) => acc + x.price, 0);
   const discount = num(els.discount);
-  const subtotal = c.total + s.total + st.total + rp.total + materialsTotal + extras;
+  const subtotal = c.total + s.total + st.total + un.total + rp.total + materialsTotal + extras;
   const grand = Math.max(0, subtotal - discount);
 
   document.getElementById('sandingWoodNote').style.display = noHorizSanding() ? 'block' : 'none';
@@ -1140,6 +1165,7 @@ function updateTotal() {
   sr('sandingRow', 'sandingTotal', s.total);
   document.getElementById('stainingLabel').textContent = 'Staining' + ((PROCESSES && PROCESSES[els.stainProcess.value]) ? ' (' + PROCESSES[els.stainProcess.value].label + ')' : '');
   sr('stainingRow', 'stainingTotal', st.total);
+  sr('undersideRow', 'undersideTotal', un.total);
   sr('repairsRow', 'repairsRowTotal', rp.total);
   sr('materialsRow', 'materialsTotal', materialsTotal);
   sr('extrasRow', 'extrasTotal', extras);
@@ -1181,6 +1207,7 @@ stainingEnabled.addEventListener('change', () => {
   updateStainUI(); updateTotal();
 });
 stainCustomerSupplied.addEventListener('change', updateTotal);
+$('stain_underside').addEventListener('change', updateTotal);
 $('stain_vertical').addEventListener('change', () => {
   $('stainVerticalWrap').style.display = $('stain_vertical').checked ? 'block' : 'none';
   updateTotal();
@@ -1229,16 +1256,18 @@ function buildScopeDraft() {
   if (hasRailing.checked) surfaces.push('railing assemblies');
   if (hasStairs.checked) surfaces.push('stair treads');
   surfaces.push('risers/skirting');
+  const underside = $('stain_underside').checked;
   let area = 'Deck Area: ' + (sqft || '___') + ' sq ft. - This includes refinishing of all accessible surfaces including ' + surfaces.join(', ') + '.';
   if (structuresHas('gazebo')) area += '\n*Project includes accessible exterior surfaces of gazebo.';
   if (structuresHas('pergola')) area += '\n*Project includes accessible exterior surfaces of pergola.';
+  if (underside) area += '\n*The underside of the deck is included in this refinishing proposal.';
   const resp = 'Client Responsibilities:\n' +
     '-Clearing the deck surface and removing all hanging items before work begins.\n' +
     '-Notifying adjacent neighbors of the scheduled project dates to help ensure the crew can remain focused and minimize interruptions during work hours.\n' +
     '-Ensuring accessibility and proper functioning of a water source and power outlet throughout the project duration.';
-  const excl = 'Exclusions:\n-The underside of the deck is not included in this refinishing proposal.';
+  const excl = underside ? '' : 'Exclusions:\n-The underside of the deck is not included in this refinishing proposal.';
   const addl = 'Additional Services:\n-Upon-request inspection / maintenance wash within 18 months of project completion.';
-  return [area, resp, excl, addl].join('\n\n');
+  return [area, resp, excl, addl].filter(Boolean).join('\n\n');
 }
 function updateScopePreview() {
   const filled = !!(scopeDescEl.value || '').trim();
@@ -1398,6 +1427,7 @@ function buildEstimateFormData() {
   fd.append('scope_description', (scopeDescEl.value.trim() || buildScopeDraft()));
   fd.append('repairs_description', (repairsDescEl.value.trim() || buildRepairsDraft()));
   fd.append('warranty_waived', $('warranty_waived').checked ? '1' : '');
+  fd.append('stain_underside', $('stain_underside').checked ? '1' : '');
   return fd;
 }
 
@@ -1478,6 +1508,7 @@ async function loadForEdit(id) {
   setVal(scopeDescEl, p.scope_description);
   setVal(repairsDescEl, p.repairs_description);
   if ($('warranty_waived')) $('warranty_waived').checked = !!p.warranty_waived;
+  setChk($('stain_underside'), p.stain_underside);
   updateScopePreview();
   (x.extra_items || []).forEach(it => addExtraRow(it.description, it.price));
   applyRepairsEdit(x.repairs || []);

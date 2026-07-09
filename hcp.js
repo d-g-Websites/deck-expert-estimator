@@ -427,6 +427,20 @@ export function buildLineItems(record, breakdown) {
     }
   }
 
+  // §4b Underside of Deck — own section (labor + 2× stain), after staining.
+  if (b.underside && b.underside.enabled && b.underside.total > 0) {
+    const u = b.underside;
+    const money = (n) => "$" + (Number(n) || 0).toFixed(2);
+    const desc =
+      "Staining / sealing of the underside of the deck, in the same product and color as the deck surface.\n\n" +
+      "Because the underside is rough, less accessible, and more absorbent, it requires additional labor and " +
+      "roughly twice the stain/sealant of the deck surface.\n\n" +
+      `Labor: ${money(u.labor)}\n` +
+      `Stain / sealant (2× the deck quantity): ${money(u.stain_material)}\n` +
+      `Total: ${money(u.total)}`;
+    push("Staining / Sealing — Underside of Deck", u.total, { description: desc });
+  }
+
   // §5 Repair / Replacement (labor + debris; materials shown in Materials section)
   if (b.repairs && b.repairs.total > 0) {
     const body = (record.repairs_description || "").trim() || repairsFallbackBody(b);

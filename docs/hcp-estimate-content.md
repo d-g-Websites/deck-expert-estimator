@@ -232,6 +232,21 @@ Per-product structure: **intro** + optional **product-specific notes** (bullets)
 
 ---
 
+## Section 4b — Underside of Deck  *(line item)*  — ✅ BUILT
+
+- Checkbox by the sq-ft field: **"Underside of the deck also needs staining"**
+  (`stain_underside`). Own line, placed **after Staining, before Repairs**.
+- **Pricing (own section — not folded into staining/materials):**
+  - Labor = **75% of the staining labor** (`staining.total × 0.75`).
+  - Stain = **2× the deck stain material** (2× the `stain_material` gallons cost).
+  - Line total = labor + stain; added to the subtotal.
+- **Line:** "Staining / Sealing — Underside of Deck", description writes out the
+  labor + stain amounts.
+- **Scope text:** when checked, the "underside not included" exclusion is dropped
+  and an "*The underside of the deck is included…" note is added to the area block.
+
+---
+
 ## Section 5 — Repair / Replacement  *(line item)*  — ✅ BUILT
 
 - **Name:** `Repair / Replacement`
