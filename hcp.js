@@ -503,16 +503,21 @@ function isApproved(est) {
 
 const optLineItemsPath = (estId, optId) => `/estimates/${estId}/options/${optId}/line_items`;
 
-// Overwrite an option's line items: remove what's there, then add ours.
+// Overwrite an option's line items. HCP has no single-item create for estimate
+// line items — it uses a bulk update on the collection (like jobs): items without
+// a uuid are created, so sending our full list replaces the option's line items.
 async function replaceLineItems(estimateId, optionId, lineItems) {
-  const data = await hcpRequest(`${optLineItemsPath(estimateId, optionId)}?page_size=200`);
-  const existing = hcpListFromResponse(data, "line_items");
-  for (const li of existing) {
-    const liId = pickId(li, "id", "uuid");
-    if (liId) await hcpRequest(`${optLineItemsPath(estimateId, optionId)}/${liId}`, { method: "DELETE" });
-  }
-  for (const li of lineItems) {
-    await hcpRequest(optLineItemsPath(estimateId, optionId), { method: "POST", body: li });
+  const path = optLineItemsPath(estimateId, optionId);
+  const body = { line_items: lineItems };
+  try {
+    await hcpRequest(path, { method: "PUT", body });
+  } catch (e) {
+    // Fall back to PATCH if PUT isn't the accepted method for the collection.
+    if (e.status === 404 || e.status === 405) {
+      await hcpRequest(path, { method: "PATCH", body });
+    } else {
+      throw e;
+    }
   }
 }
 
